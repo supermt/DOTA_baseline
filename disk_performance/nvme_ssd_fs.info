@@ -1,0 +1,47 @@
+tune2fs 1.45.5 (07-Jan-2020)
+Filesystem volume name:   <none>
+Last mounted on:          /media/jinghuan/nvme
+Filesystem UUID:          fe49fd93-c46b-4468-9945-b1c25292a3f8
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype needs_recovery extent 64bit flex_bg sparse_super large_file huge_file dir_nlink extra_isize metadata_csum
+Filesystem flags:         signed_directory_hash 
+Default mount options:    user_xattr acl
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              61054976
+Block count:              244190646
+Reserved block count:     12209532
+Free blocks:              135872566
+Free inodes:              61000301
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Group descriptor size:    64
+Reserved GDT blocks:      1024
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8192
+Inode blocks per group:   512
+Flex block group size:    16
+Filesystem created:       Fri Jan 17 20:26:47 2020
+Last mount time:          Fri Aug 14 12:00:55 2020
+Last write time:          Fri Aug 14 12:00:55 2020
+Mount count:              53
+Maximum mount count:      -1
+Last checked:             Fri Jan 17 20:26:47 2020
+Check interval:           0 (<none>)
+Lifetime writes:          55 TB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:	          256
+Required extra isize:     32
+Desired extra isize:      32
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      2a3e988f-e4b0-414b-a3c8-df395425ffb7
+Journal backup:           inode blocks
+Checksum type:            crc32c
+Checksum:                 0x3d932a10

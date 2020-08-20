@@ -1,0 +1,35 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=256
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=88925: Sun Aug 16 11:05:47 2020
+  write: IOPS=29.7k, BW=116MiB/s (122MB/s)(6956MiB/60008msec); 0 zone resets
+    slat (nsec): min=1424, max=1121.4M, avg=31623.86, stdev=1926594.28
+    clat (usec): min=16, max=1125.1k, avg=8529.31, stdev=31404.45
+     lat (usec): min=508, max=1125.1k, avg=8561.01, stdev=31469.74
+    clat percentiles (usec):
+     |  1.00th=[    562],  5.00th=[    570], 10.00th=[    570],
+     | 20.00th=[    578], 30.00th=[    603], 40.00th=[    611],
+     | 50.00th=[    848], 60.00th=[   3261], 70.00th=[  12518],
+     | 80.00th=[  16450], 90.00th=[  21627], 95.00th=[  30802],
+     | 99.00th=[  34341], 99.50th=[  35914], 99.90th=[ 666895],
+     | 99.95th=[ 742392], 99.99th=[1132463]
+   bw (  KiB/s): min= 8968, max=1729008, per=100.00%, avg=126040.67, stdev=279678.74, samples=113
+   iops        : min= 2242, max=432252, avg=31510.16, stdev=69919.69, samples=113
+  lat (usec)   : 20=0.01%, 750=49.03%, 1000=2.53%
+  lat (msec)   : 2=5.58%, 4=10.34%, 10=0.11%, 20=19.24%, 50=12.91%
+  lat (msec)   : 100=0.02%, 250=0.03%, 500=0.07%, 750=0.08%, 1000=0.03%
+  lat (msec)   : 2000=0.01%
+  cpu          : usr=5.73%, sys=14.80%, ctx=2934, majf=0, minf=14
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.1%
+     issued rwts: total=0,1780625,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=256
+
+Run status group 0 (all jobs):
+  WRITE: bw=116MiB/s (122MB/s), 116MiB/s-116MiB/s (122MB/s-122MB/s), io=6956MiB (7293MB), run=60008-60008msec
+
+Disk stats (read/write):
+  sdb: ios=0/5140, merge=0/263, ticks=0/997884, in_queue=987944, util=21.54%
+fio -filename=/home/jinghuan/rocksdb_ssd/fiotest -bs=4k -ioengine=libaio -numjobs=1 -iodepth=256 -rw=write -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

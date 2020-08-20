@@ -1,0 +1,34 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 16.0KiB-16.0KiB, (W) 16.0KiB-16.0KiB, (T) 16.0KiB-16.0KiB, ioengine=psync, iodepth=1
+...
+fio-3.16
+Starting 16 processes
+
+baseline_scanning: (groupid=0, jobs=16): err= 0: pid=233634: Tue Aug 18 03:43:19 2020
+  write: IOPS=6427, BW=100MiB/s (105MB/s)(6029MiB/60027msec); 0 zone resets
+    clat (usec): min=3, max=297337, avg=1307.47, stdev=7501.98
+     lat (usec): min=3, max=297338, avg=1307.82, stdev=7502.03
+    clat percentiles (usec):
+     |  1.00th=[     9],  5.00th=[    15], 10.00th=[    22], 20.00th=[    38],
+     | 30.00th=[    60], 40.00th=[    67], 50.00th=[    73], 60.00th=[   110],
+     | 70.00th=[   237], 80.00th=[   289], 90.00th=[   326], 95.00th=[   363],
+     | 99.00th=[ 39584], 99.50th=[ 55837], 99.90th=[ 79168], 99.95th=[ 86508],
+     | 99.99th=[112722]
+   bw (  KiB/s): min=39067, max=2997998, per=100.00%, avg=192865.09, stdev=30160.61, samples=1024
+   iops        : min= 2441, max=187374, avg=12053.47, stdev=1885.04, samples=1024
+  lat (usec)   : 4=0.01%, 10=2.15%, 20=6.52%, 50=15.08%, 100=35.13%
+  lat (usec)   : 250=12.73%, 500=24.97%, 750=0.03%, 1000=0.01%
+  lat (msec)   : 2=0.01%, 4=0.03%, 10=0.52%, 20=0.25%, 50=1.99%
+  lat (msec)   : 100=0.57%, 250=0.01%, 500=0.01%
+  cpu          : usr=0.12%, sys=7.56%, ctx=184919, majf=0, minf=181
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,385848,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=1
+
+Run status group 0 (all jobs):
+  WRITE: bw=100MiB/s (105MB/s), 100MiB/s-100MiB/s (105MB/s-105MB/s), io=6029MiB (6322MB), run=60027-60027msec
+
+Disk stats (read/write):
+  sda: ios=0/99367, merge=0/500, ticks=0/683677, in_queue=486164, util=71.19%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=16k -ioengine=psync -numjobs=16 -iodepth=1 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

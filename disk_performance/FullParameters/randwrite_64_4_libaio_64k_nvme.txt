@@ -1,0 +1,35 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=libaio, iodepth=64
+...
+fio-3.16
+Starting 4 processes
+
+baseline_scanning: (groupid=0, jobs=4): err= 0: pid=229724: Tue Aug 18 02:39:30 2020
+  write: IOPS=26.9k, BW=1681MiB/s (1763MB/s)(40.0GiB/24368msec); 0 zone resets
+    slat (usec): min=11, max=44124, avg=135.91, stdev=1261.00
+    clat (nsec): min=1561, max=54345k, avg=8646249.89, stdev=9303145.61
+     lat (usec): min=23, max=54486, avg=8782.22, stdev=9365.18
+    clat percentiles (usec):
+     |  1.00th=[ 1958],  5.00th=[ 3097], 10.00th=[ 3589], 20.00th=[ 3785],
+     | 30.00th=[ 3949], 40.00th=[ 4113], 50.00th=[ 4424], 60.00th=[ 4686],
+     | 70.00th=[ 4948], 80.00th=[10290], 90.00th=[26608], 95.00th=[30278],
+     | 99.00th=[35914], 99.50th=[39060], 99.90th=[43254], 99.95th=[44827],
+     | 99.99th=[47973]
+   bw (  MiB/s): min= 1470, max= 3263, per=100.00%, avg=1806.84, stdev=87.26, samples=180
+   iops        : min=23522, max=52212, avg=28909.33, stdev=1396.12, samples=180
+  lat (usec)   : 2=0.01%, 4=0.01%, 50=0.01%, 100=0.01%, 250=0.01%
+  lat (usec)   : 500=0.01%, 750=0.01%, 1000=0.02%
+  lat (msec)   : 2=1.07%, 4=31.81%, 10=47.00%, 20=2.99%, 50=17.08%
+  lat (msec)   : 100=0.01%
+  cpu          : usr=2.36%, sys=52.73%, ctx=63157, majf=0, minf=50
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.1%, >=64=0.0%
+     issued rwts: total=0,655360,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+
+Run status group 0 (all jobs):
+  WRITE: bw=1681MiB/s (1763MB/s), 1681MiB/s-1681MiB/s (1763MB/s-1763MB/s), io=40.0GiB (42.9GB), run=24368-24368msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/226073, merge=0/73, ticks=0/11094540, in_queue=10651060, util=89.92%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=64k -ioengine=libaio -numjobs=4 -iodepth=64 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

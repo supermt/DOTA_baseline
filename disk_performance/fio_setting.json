@@ -1,0 +1,8 @@
+{
+    "ioengine":["libaio"],
+    "directory":[
+        "/home/jinghuan/rocksdb_nvme",
+        "/home/jinghuan/rocksdb_hdd",
+        "/home/jinghuan/rocksdb_ssd"
+    ]
+}

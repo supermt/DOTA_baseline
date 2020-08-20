@@ -1,0 +1,32 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 16.0KiB-16.0KiB, (W) 16.0KiB-16.0KiB, (T) 16.0KiB-16.0KiB, ioengine=libaio, iodepth=64
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=95367: Sun Aug 16 12:57:37 2020
+  write: IOPS=6836, BW=107MiB/s (112MB/s)(6410MiB/60009msec); 0 zone resets
+    slat (usec): min=4, max=27726, avg=96.05, stdev=1071.22
+    clat (usec): min=13, max=29849, avg=6220.48, stdev=7501.62
+     lat (usec): min=379, max=39876, avg=6316.65, stdev=7549.87
+    clat percentiles (usec):
+     |  1.00th=[  379],  5.00th=[  383], 10.00th=[  383], 20.00th=[  392],
+     | 30.00th=[  400], 40.00th=[  445], 50.00th=[ 2024], 60.00th=[ 2114],
+     | 70.00th=[10945], 80.00th=[14877], 90.00th=[16057], 95.00th=[21890],
+     | 99.00th=[22938], 99.50th=[25822], 99.90th=[26084], 99.95th=[26084],
+     | 99.99th=[29754]
+   bw (  KiB/s): min=62976, max=2564960, per=100.00%, avg=162051.25, stdev=384610.27, samples=81
+   iops        : min= 3936, max=160310, avg=10128.20, stdev=24038.14, samples=81
+  lat (usec)   : 20=0.01%, 500=42.32%, 750=1.50%, 1000=0.35%
+  lat (msec)   : 2=1.85%, 4=17.25%, 10=0.19%, 20=27.66%, 50=8.87%
+  cpu          : usr=2.16%, sys=13.44%, ctx=4693, majf=0, minf=12
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.1%, >=64=0.0%
+     issued rwts: total=0,410261,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+
+Run status group 0 (all jobs):
+  WRITE: bw=107MiB/s (112MB/s), 107MiB/s-107MiB/s (112MB/s-112MB/s), io=6410MiB (6722MB), run=60009-60009msec
+
+Disk stats (read/write):
+  sda: ios=0/99914, merge=0/463, ticks=0/794385, in_queue=601856, util=79.03%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=16k -ioengine=libaio -numjobs=1 -iodepth=64 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

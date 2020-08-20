@@ -1,0 +1,33 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=16
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=83595: Sun Aug 16 09:31:18 2020
+  write: IOPS=386k, BW=1508MiB/s (1581MB/s)(10.0GiB/6791msec); 0 zone resets
+    slat (nsec): min=1411, max=62985k, avg=1702.99, stdev=38906.34
+    clat (nsec): min=1190, max=63227k, avg=35386.01, stdev=151051.07
+     lat (usec): min=2, max=63240, avg=37.12, stdev=156.02
+    clat percentiles (usec):
+     |  1.00th=[   33],  5.00th=[   33], 10.00th=[   33], 20.00th=[   34],
+     | 30.00th=[   34], 40.00th=[   34], 50.00th=[   35], 60.00th=[   35],
+     | 70.00th=[   36], 80.00th=[   37], 90.00th=[   38], 95.00th=[   40],
+     | 99.00th=[   55], 99.50th=[   63], 99.90th=[   83], 99.95th=[   95],
+     | 99.99th=[  219]
+   bw (  MiB/s): min= 1031, max= 1744, per=100.00%, avg=1624.66, stdev=205.58, samples=12
+   iops        : min=264024, max=446606, avg=415912.50, stdev=52629.48, samples=12
+  lat (usec)   : 2=0.01%, 4=0.01%, 10=0.01%, 20=0.01%, 50=98.60%
+  lat (usec)   : 100=1.35%, 250=0.04%, 500=0.01%
+  lat (msec)   : 100=0.01%
+  cpu          : usr=28.22%, sys=70.75%, ctx=86, majf=0, minf=12
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=100.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.1%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,2621440,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=16
+
+Run status group 0 (all jobs):
+  WRITE: bw=1508MiB/s (1581MB/s), 1508MiB/s-1508MiB/s (1581MB/s-1581MB/s), io=10.0GiB (10.7GB), run=6791-6791msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/7447, merge=0/2, ticks=0/879674, in_queue=865568, util=70.68%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=4k -ioengine=libaio -numjobs=1 -iodepth=16 -rw=write -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

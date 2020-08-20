@@ -1,0 +1,33 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 16.0KiB-16.0KiB, (W) 16.0KiB-16.0KiB, (T) 16.0KiB-16.0KiB, ioengine=psync, iodepth=1
+...
+fio-3.16
+Starting 4 processes
+
+baseline_scanning: (groupid=0, jobs=4): err= 0: pid=225829: Tue Aug 18 01:43:54 2020
+  write: IOPS=105k, BW=1648MiB/s (1728MB/s)(40.0GiB/24852msec); 0 zone resets
+    clat (usec): min=2, max=43093, avg=34.83, stdev=713.88
+     lat (usec): min=2, max=43093, avg=34.91, stdev=713.88
+    clat percentiles (usec):
+     |  1.00th=[    7],  5.00th=[   11], 10.00th=[   12], 20.00th=[   13],
+     | 30.00th=[   14], 40.00th=[   14], 50.00th=[   15], 60.00th=[   16],
+     | 70.00th=[   16], 80.00th=[   18], 90.00th=[   19], 95.00th=[   22],
+     | 99.00th=[   36], 99.50th=[   44], 99.90th=[   93], 99.95th=[24773],
+     | 99.99th=[29492]
+   bw (  MiB/s): min= 1447, max= 3272, per=100.00%, avg=1765.79, stdev=79.59, samples=183
+   iops        : min=92610, max=209458, avg=113010.13, stdev=5093.88, samples=183
+  lat (usec)   : 4=0.10%, 10=4.71%, 20=88.18%, 50=6.69%, 100=0.23%
+  lat (usec)   : 250=0.01%, 500=0.01%, 750=0.01%, 1000=0.01%
+  lat (msec)   : 2=0.01%, 4=0.01%, 10=0.01%, 20=0.01%, 50=0.07%
+  cpu          : usr=1.98%, sys=46.32%, ctx=202045, majf=0, minf=45
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,2621440,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=1
+
+Run status group 0 (all jobs):
+  WRITE: bw=1648MiB/s (1728MB/s), 1648MiB/s-1648MiB/s (1728MB/s-1728MB/s), io=40.0GiB (42.9GB), run=24852-24852msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/959623, merge=0/53, ticks=0/11570321, in_queue=9719820, util=90.29%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=16k -ioengine=psync -numjobs=4 -iodepth=1 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

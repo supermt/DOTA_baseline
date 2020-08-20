@@ -1,0 +1,32 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=psync, iodepth=256
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=99020: Sun Aug 16 14:09:56 2020
+  write: IOPS=2119, BW=132MiB/s (139MB/s)(7951MiB/60012msec); 0 zone resets
+    clat (usec): min=13, max=240207, avg=465.21, stdev=2802.48
+     lat (usec): min=13, max=240210, avg=466.23, stdev=2802.53
+    clat percentiles (usec):
+     |  1.00th=[   15],  5.00th=[   15], 10.00th=[   16], 20.00th=[   16],
+     | 30.00th=[   18], 40.00th=[   78], 50.00th=[   79], 60.00th=[   81],
+     | 70.00th=[   83], 80.00th=[   85], 90.00th=[   93], 95.00th=[  108],
+     | 99.00th=[14877], 99.50th=[17957], 99.90th=[21627], 99.95th=[22676],
+     | 99.99th=[29754]
+   bw (  KiB/s): min=36736, max=3483264, per=100.00%, avg=136835.29, stdev=360387.11, samples=119
+   iops        : min=  574, max=54426, avg=2138.04, stdev=5631.05, samples=119
+  lat (usec)   : 20=33.70%, 50=4.13%, 100=55.44%, 250=3.98%, 500=0.01%
+  lat (msec)   : 4=0.01%, 10=0.15%, 20=2.23%, 50=0.35%, 100=0.01%
+  lat (msec)   : 250=0.01%
+  cpu          : usr=0.59%, sys=13.48%, ctx=3553, majf=0, minf=11
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,127218,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=256
+
+Run status group 0 (all jobs):
+  WRITE: bw=132MiB/s (139MB/s), 132MiB/s-132MiB/s (139MB/s-139MB/s), io=7951MiB (8337MB), run=60012-60012msec
+
+Disk stats (read/write):
+  sdb: ios=0/31385, merge=0/334, ticks=0/1009679, in_queue=946940, util=55.31%
+fio -filename=/home/jinghuan/rocksdb_ssd/fiotest -bs=64k -ioengine=psync -numjobs=1 -iodepth=256 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

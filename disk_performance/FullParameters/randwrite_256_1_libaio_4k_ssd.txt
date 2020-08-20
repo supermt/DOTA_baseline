@@ -1,0 +1,33 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=256
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=97563: Sun Aug 16 13:39:48 2020
+  write: IOPS=29.0k, BW=113MiB/s (119MB/s)(6799MiB/60009msec); 0 zone resets
+    slat (nsec): min=1486, max=130545k, avg=31748.40, stdev=605289.90
+    clat (usec): min=16, max=134213, avg=8684.70, stdev=9989.69
+     lat (usec): min=617, max=134224, avg=8716.54, stdev=10018.73
+    clat percentiles (usec):
+     |  1.00th=[   652],  5.00th=[   652], 10.00th=[   652], 20.00th=[   676],
+     | 30.00th=[   693], 40.00th=[   717], 50.00th=[  3326], 60.00th=[ 11731],
+     | 70.00th=[ 15533], 80.00th=[ 16909], 90.00th=[ 22676], 95.00th=[ 30016],
+     | 99.00th=[ 31851], 99.50th=[ 34866], 99.90th=[ 43779], 99.95th=[ 47449],
+     | 99.99th=[133694]
+   bw (  KiB/s): min=28456, max=1532336, per=100.00%, avg=116981.60, stdev=238002.24, samples=119
+   iops        : min= 7114, max=383084, avg=29245.39, stdev=59500.56, samples=119
+  lat (usec)   : 20=0.01%, 750=44.24%, 1000=2.52%
+  lat (msec)   : 2=1.19%, 4=11.59%, 10=0.27%, 20=24.67%, 50=15.49%
+  lat (msec)   : 250=0.01%
+  cpu          : usr=7.33%, sys=17.45%, ctx=3558, majf=0, minf=11
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.1%
+     issued rwts: total=0,1740416,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=256
+
+Run status group 0 (all jobs):
+  WRITE: bw=113MiB/s (119MB/s), 113MiB/s-113MiB/s (119MB/s-119MB/s), io=6799MiB (7129MB), run=60009-60009msec
+
+Disk stats (read/write):
+  sdb: ios=0/407271, merge=0/231, ticks=0/1053358, in_queue=678140, util=63.79%
+fio -filename=/home/jinghuan/rocksdb_ssd/fiotest -bs=4k -ioengine=libaio -numjobs=1 -iodepth=256 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

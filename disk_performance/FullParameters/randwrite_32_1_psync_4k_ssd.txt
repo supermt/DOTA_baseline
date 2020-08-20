@@ -1,0 +1,33 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=psync, iodepth=32
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=96864: Sun Aug 16 13:25:44 2020
+  write: IOPS=31.1k, BW=122MiB/s (128MB/s)(7298MiB/60010msec); 0 zone resets
+    clat (nsec): min=1264, max=27133k, avg=31016.10, stdev=605215.63
+     lat (nsec): min=1289, max=27133k, avg=31098.07, stdev=605218.03
+    clat percentiles (nsec):
+     |  1.00th=[    1400],  5.00th=[    1464], 10.00th=[    1512],
+     | 20.00th=[    1560], 30.00th=[    1624], 40.00th=[    1704],
+     | 50.00th=[    2160], 60.00th=[    7776], 70.00th=[    8032],
+     | 80.00th=[    8256], 90.00th=[    8768], 95.00th=[   11456],
+     | 99.00th=[   14400], 99.50th=[   18816], 99.90th=[12779520],
+     | 99.95th=[14221312], 99.99th=[20316160]
+   bw (  KiB/s): min=31656, max=2013660, per=100.00%, avg=125565.09, stdev=270142.87, samples=119
+   iops        : min= 7914, max=503415, avg=31391.27, stdev=67535.72, samples=119
+  lat (usec)   : 2=48.14%, 4=8.05%, 10=37.07%, 20=6.28%, 50=0.26%
+  lat (usec)   : 100=0.01%, 250=0.01%, 500=0.01%
+  lat (msec)   : 4=0.01%, 10=0.02%, 20=0.17%, 50=0.01%
+  cpu          : usr=3.97%, sys=14.60%, ctx=3886, majf=0, minf=11
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,1868297,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=32
+
+Run status group 0 (all jobs):
+  WRITE: bw=122MiB/s (128MB/s), 122MiB/s-122MiB/s (128MB/s-128MB/s), io=7298MiB (7653MB), run=60010-60010msec
+
+Disk stats (read/write):
+  sdb: ios=10/435701, merge=0/304, ticks=105/1058605, in_queue=648568, util=63.21%
+fio -filename=/home/jinghuan/rocksdb_ssd/fiotest -bs=4k -ioengine=psync -numjobs=1 -iodepth=32 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

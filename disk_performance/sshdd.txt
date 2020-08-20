@@ -1,0 +1,23 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=psync, iodepth=32
+...
+fio-3.16
+Starting 16 processes
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+baseline_scanning: Laying out IO file (1 file / 61440MiB)
+
+
+Run status group 0 (all jobs):

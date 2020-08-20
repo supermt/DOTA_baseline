@@ -1,0 +1,32 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 16.0KiB-16.0KiB, (W) 16.0KiB-16.0KiB, (T) 16.0KiB-16.0KiB, ioengine=libaio, iodepth=1
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=92285: Sun Aug 16 12:03:56 2020
+  write: IOPS=106k, BW=1654MiB/s (1734MB/s)(10.0GiB/6191msec); 0 zone resets
+    slat (usec): min=3, max=13818, avg= 7.17, stdev=143.78
+    clat (nsec): min=424, max=29218, avg=481.54, stdev=292.65
+     lat (usec): min=4, max=13821, avg= 7.69, stdev=143.82
+    clat percentiles (nsec):
+     |  1.00th=[  438],  5.00th=[  442], 10.00th=[  446], 20.00th=[  454],
+     | 30.00th=[  466], 40.00th=[  474], 50.00th=[  478], 60.00th=[  482],
+     | 70.00th=[  486], 80.00th=[  490], 90.00th=[  494], 95.00th=[  506],
+     | 99.00th=[  556], 99.50th=[  628], 99.90th=[  908], 99.95th=[ 2128],
+     | 99.99th=[15552]
+   bw (  MiB/s): min=  126, max= 2735, per=100.00%, avg=1818.90, stdev=770.63, samples=11
+   iops        : min= 8120, max=175040, avg=116409.64, stdev=49320.11, samples=11
+  lat (nsec)   : 500=92.85%, 750=6.91%, 1000=0.16%
+  lat (usec)   : 2=0.03%, 4=0.02%, 10=0.01%, 20=0.03%, 50=0.01%
+  cpu          : usr=10.61%, sys=65.90%, ctx=210, majf=0, minf=10
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,655360,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=1
+
+Run status group 0 (all jobs):
+  WRITE: bw=1654MiB/s (1734MB/s), 1654MiB/s-1654MiB/s (1734MB/s-1734MB/s), io=10.0GiB (10.7GB), run=6191-6191msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/167859, merge=0/13, ticks=0/1984731, in_queue=1700620, util=71.78%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=16k -ioengine=libaio -numjobs=1 -iodepth=1 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

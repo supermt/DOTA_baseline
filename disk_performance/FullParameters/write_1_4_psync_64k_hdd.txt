@@ -1,0 +1,34 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=psync, iodepth=1
+...
+fio-3.16
+Starting 4 processes
+
+baseline_scanning: (groupid=0, jobs=4): err= 0: pid=213169: Mon Aug 17 22:36:20 2020
+  write: IOPS=16.2k, BW=1015MiB/s (1064MB/s)(40.0GiB/40365msec); 0 zone resets
+    clat (usec): min=7, max=126010, avg=233.06, stdev=1235.09
+     lat (usec): min=8, max=126010, avg=234.20, stdev=1235.14
+    clat percentiles (usec):
+     |  1.00th=[   29],  5.00th=[   43], 10.00th=[   45], 20.00th=[   48],
+     | 30.00th=[   65], 40.00th=[  109], 50.00th=[  139], 60.00th=[  176],
+     | 70.00th=[  194], 80.00th=[  204], 90.00th=[  219], 95.00th=[  235],
+     | 99.00th=[  404], 99.50th=[10290], 99.90th=[14615], 99.95th=[16188],
+     | 99.99th=[18482]
+   bw (  MiB/s): min=  637, max= 5328, per=100.00%, avg=1048.37, stdev=233.23, samples=308
+   iops        : min=10191, max=85254, avg=16773.81, stdev=3731.72, samples=308
+  lat (usec)   : 10=0.03%, 20=0.23%, 50=24.37%, 100=12.55%, 250=59.88%
+  lat (usec)   : 500=1.99%, 750=0.06%, 1000=0.02%
+  lat (msec)   : 2=0.02%, 4=0.01%, 10=0.33%, 20=0.52%, 50=0.01%
+  lat (msec)   : 100=0.01%, 250=0.01%
+  cpu          : usr=1.27%, sys=58.54%, ctx=62412, majf=0, minf=47
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,655360,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=1
+
+Run status group 0 (all jobs):
+  WRITE: bw=1015MiB/s (1064MB/s), 1015MiB/s-1015MiB/s (1064MB/s-1064MB/s), io=40.0GiB (42.9GB), run=40365-40365msec
+
+Disk stats (read/write):
+  sda: ios=0/9169, merge=0/29, ticks=0/613295, in_queue=595060, util=69.54%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=64k -ioengine=psync -numjobs=4 -iodepth=1 -rw=write -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

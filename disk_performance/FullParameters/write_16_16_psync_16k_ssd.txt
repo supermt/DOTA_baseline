@@ -1,0 +1,34 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 16.0KiB-16.0KiB, (W) 16.0KiB-16.0KiB, (T) 16.0KiB-16.0KiB, ioengine=psync, iodepth=16
+...
+fio-3.16
+Starting 16 processes
+
+baseline_scanning: (groupid=0, jobs=16): err= 0: pid=219039: Tue Aug 18 00:02:53 2020
+  write: IOPS=148k, BW=2319MiB/s (2431MB/s)(136GiB/60004msec); 0 zone resets
+    clat (usec): min=2, max=705495, avg=102.70, stdev=2261.10
+     lat (usec): min=2, max=705495, avg=102.86, stdev=2261.11
+    clat percentiles (usec):
+     |  1.00th=[    5],  5.00th=[    8], 10.00th=[   10], 20.00th=[   13],
+     | 30.00th=[   18], 40.00th=[   28], 50.00th=[   34], 60.00th=[   37],
+     | 70.00th=[   39], 80.00th=[   46], 90.00th=[   77], 95.00th=[  141],
+     | 99.00th=[  176], 99.50th=[ 5211], 99.90th=[14222], 99.95th=[18744],
+     | 99.99th=[26346]
+   bw (  MiB/s): min=   42, max= 5879, per=100.00%, avg=2440.80, stdev=99.64, samples=1822
+   iops        : min= 2736, max=376277, avg=156210.18, stdev=6376.65, samples=1822
+  lat (usec)   : 4=0.10%, 10=11.41%, 20=22.57%, 50=48.35%, 100=9.97%
+  lat (usec)   : 250=6.94%, 500=0.03%, 750=0.01%, 1000=0.01%
+  lat (msec)   : 2=0.01%, 4=0.03%, 10=0.39%, 20=0.14%, 50=0.04%
+  lat (msec)   : 100=0.01%, 250=0.01%, 500=0.01%, 750=0.01%
+  cpu          : usr=1.22%, sys=39.10%, ctx=4440500, majf=0, minf=186
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,8904327,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=16
+
+Run status group 0 (all jobs):
+  WRITE: bw=2319MiB/s (2431MB/s), 2319MiB/s-2319MiB/s (2431MB/s-2431MB/s), io=136GiB (146GB), run=60004-60004msec
+
+Disk stats (read/write):
+  sdb: ios=66/8660, merge=0/511, ticks=950/784144, in_queue=768576, util=37.67%
+fio -filename=/home/jinghuan/rocksdb_ssd/fiotest -bs=16k -ioengine=psync -numjobs=16 -iodepth=16 -rw=write -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

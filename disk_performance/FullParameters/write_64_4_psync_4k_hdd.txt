@@ -1,0 +1,36 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=psync, iodepth=64
+...
+fio-3.16
+Starting 4 processes
+
+baseline_scanning: (groupid=0, jobs=4): err= 0: pid=203311: Mon Aug 17 20:15:43 2020
+  write: IOPS=261k, BW=1019MiB/s (1068MB/s)(40.0GiB/40203msec); 0 zone resets
+    clat (nsec): min=886, max=111228k, avg=14155.40, stdev=299780.68
+     lat (nsec): min=911, max=111228k, avg=14235.55, stdev=299782.41
+    clat percentiles (nsec):
+     |  1.00th=[    1736],  5.00th=[    3056], 10.00th=[    3184],
+     | 20.00th=[    3312], 30.00th=[    3600], 40.00th=[    4512],
+     | 50.00th=[    5984], 60.00th=[    7904], 70.00th=[   11328],
+     | 80.00th=[   16512], 90.00th=[   18560], 95.00th=[   21120],
+     | 99.00th=[   28800], 99.50th=[   33536], 99.90th=[   50944],
+     | 99.95th=[  179200], 99.99th=[15794176]
+   bw (  MiB/s): min=  467, max= 4286, per=100.00%, avg=1058.42, stdev=213.56, samples=308
+   iops        : min=119696, max=1097454, avg=270955.99, stdev=54671.35, samples=308
+  lat (nsec)   : 1000=0.01%
+  lat (usec)   : 2=1.21%, 4=34.28%, 10=32.04%, 20=26.12%, 50=6.23%
+  lat (usec)   : 100=0.05%, 250=0.01%, 500=0.01%, 750=0.01%, 1000=0.01%
+  lat (msec)   : 2=0.01%, 4=0.01%, 10=0.01%, 20=0.02%, 50=0.01%
+  lat (msec)   : 100=0.01%, 250=0.01%
+  cpu          : usr=8.24%, sys=58.24%, ctx=9836, majf=0, minf=44
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,10485760,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+
+Run status group 0 (all jobs):
+  WRITE: bw=1019MiB/s (1068MB/s), 1019MiB/s-1019MiB/s (1068MB/s-1068MB/s), io=40.0GiB (42.9GB), run=40203-40203msec
+
+Disk stats (read/write):
+  sda: ios=0/9389, merge=0/37, ticks=0/606747, in_queue=587844, util=69.34%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=4k -ioengine=psync -numjobs=4 -iodepth=64 -rw=write -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

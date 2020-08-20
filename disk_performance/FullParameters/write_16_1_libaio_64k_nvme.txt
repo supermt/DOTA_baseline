@@ -1,0 +1,33 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=libaio, iodepth=16
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=84908: Sun Aug 16 09:53:27 2020
+  write: IOPS=28.8k, BW=1803MiB/s (1890MB/s)(10.0GiB/5680msec); 0 zone resets
+    slat (usec): min=14, max=17174, avg=29.40, stdev=322.70
+    clat (nsec): min=1461, max=17469k, avg=456945.70, stdev=1253901.06
+     lat (usec): min=20, max=17487, avg=486.43, stdev=1295.16
+    clat percentiles (usec):
+     |  1.00th=[  241],  5.00th=[  243], 10.00th=[  243], 20.00th=[  258],
+     | 30.00th=[  262], 40.00th=[  265], 50.00th=[  273], 60.00th=[  285],
+     | 70.00th=[  297], 80.00th=[  322], 90.00th=[  400], 95.00th=[  570],
+     | 99.00th=[10028], 99.50th=[11207], 99.90th=[13304], 99.95th=[13829],
+     | 99.99th=[15139]
+   bw (  MiB/s): min= 1426, max= 3425, per=100.00%, avg=2001.65, stdev=675.73, samples=10
+   iops        : min=22824, max=54812, avg=32026.40, stdev=10811.68, samples=10
+  lat (usec)   : 2=0.01%, 50=0.01%, 100=0.01%, 250=15.15%, 500=78.61%
+  lat (usec)   : 750=2.77%, 1000=1.07%
+  lat (msec)   : 2=1.03%, 10=0.37%, 20=1.00%
+  cpu          : usr=4.67%, sys=67.49%, ctx=202, majf=0, minf=14
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=100.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.1%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,163840,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=16
+
+Run status group 0 (all jobs):
+  WRITE: bw=1803MiB/s (1890MB/s), 1803MiB/s-1803MiB/s (1890MB/s-1890MB/s), io=10.0GiB (10.7GB), run=5680-5680msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/6997, merge=0/1, ticks=0/1907488, in_queue=1894084, util=74.68%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=64k -ioengine=libaio -numjobs=1 -iodepth=16 -rw=write -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

@@ -1,0 +1,32 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=64
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=94379: Sun Aug 16 12:37:31 2020
+  write: IOPS=31.2k, BW=122MiB/s (128MB/s)(7319MiB/60006msec); 0 zone resets
+    slat (nsec): min=1561, max=26659k, avg=27666.80, stdev=608369.89
+    clat (usec): min=3, max=26975, avg=1817.37, stdev=4618.38
+     lat (usec): min=184, max=26979, avg=1845.08, stdev=4651.16
+    clat percentiles (usec):
+     |  1.00th=[  188],  5.00th=[  190], 10.00th=[  190], 20.00th=[  192],
+     | 30.00th=[  194], 40.00th=[  196], 50.00th=[  198], 60.00th=[  202],
+     | 70.00th=[  215], 80.00th=[  955], 90.00th=[10814], 95.00th=[15139],
+     | 99.00th=[22676], 99.50th=[22938], 99.90th=[22938], 99.95th=[24773],
+     | 99.99th=[26870]
+   bw (  KiB/s): min=54451, max=1299088, per=100.00%, avg=137512.21, stdev=247054.29, samples=109
+   iops        : min=13612, max=324772, avg=34378.04, stdev=61763.58, samples=109
+  lat (usec)   : 4=0.01%, 250=74.53%, 500=4.04%, 750=0.42%, 1000=8.58%
+  lat (msec)   : 2=1.83%, 10=0.28%, 20=8.72%, 50=1.60%
+  cpu          : usr=3.93%, sys=12.54%, ctx=3583, majf=0, minf=12
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.1%, >=64=0.0%
+     issued rwts: total=0,1873760,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+
+Run status group 0 (all jobs):
+  WRITE: bw=122MiB/s (128MB/s), 122MiB/s-122MiB/s (128MB/s-128MB/s), io=7319MiB (7675MB), run=60006-60006msec
+
+Disk stats (read/write):
+  sda: ios=0/427028, merge=0/90, ticks=0/931063, in_queue=180080, util=79.50%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=4k -ioengine=libaio -numjobs=1 -iodepth=64 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

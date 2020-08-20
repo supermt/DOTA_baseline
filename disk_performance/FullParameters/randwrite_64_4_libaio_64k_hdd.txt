@@ -1,0 +1,34 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=libaio, iodepth=64
+...
+fio-3.16
+Starting 4 processes
+
+baseline_scanning: (groupid=0, jobs=4): err= 0: pid=237124: Tue Aug 18 04:39:37 2020
+  write: IOPS=1595, BW=99.7MiB/s (105MB/s)(5983MiB/60015msec); 0 zone resets
+    slat (usec): min=14, max=98761, avg=1746.89, stdev=6057.24
+    clat (usec): min=13, max=455340, avg=110340.56, stdev=113364.41
+     lat (msec): min=2, max=458, avg=112.09, stdev=115.08
+    clat percentiles (msec):
+     |  1.00th=[    3],  5.00th=[    4], 10.00th=[    5], 20.00th=[    5],
+     | 30.00th=[    6], 40.00th=[    6], 50.00th=[   54], 60.00th=[  159],
+     | 70.00th=[  197], 80.00th=[  228], 90.00th=[  268], 95.00th=[  305],
+     | 99.00th=[  355], 99.50th=[  368], 99.90th=[  409], 99.95th=[  414],
+     | 99.99th=[  435]
+   bw (  KiB/s): min=44160, max=3068800, per=100.00%, avg=145475.14, stdev=103586.98, samples=336
+   iops        : min=  690, max=47950, avg=2273.02, stdev=1618.55, samples=336
+  lat (usec)   : 20=0.01%
+  lat (msec)   : 4=7.70%, 10=34.46%, 20=3.28%, 50=3.94%, 100=3.74%
+  lat (msec)   : 250=32.77%, 500=14.11%
+  cpu          : usr=0.27%, sys=9.70%, ctx=39864, majf=0, minf=54
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=99.7%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.1%, >=64=0.0%
+     issued rwts: total=0,95726,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+
+Run status group 0 (all jobs):
+  WRITE: bw=99.7MiB/s (105MB/s), 99.7MiB/s-99.7MiB/s (105MB/s-105MB/s), io=5983MiB (6273MB), run=60015-60015msec
+
+Disk stats (read/write):
+  sda: ios=0/30868, merge=0/1169, ticks=0/816356, in_queue=756080, util=62.51%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=64k -ioengine=libaio -numjobs=4 -iodepth=64 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

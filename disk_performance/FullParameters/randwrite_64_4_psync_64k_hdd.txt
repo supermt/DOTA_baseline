@@ -1,0 +1,34 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=psync, iodepth=64
+...
+fio-3.16
+Starting 4 processes
+
+baseline_scanning: (groupid=0, jobs=4): err= 0: pid=235857: Tue Aug 18 04:19:30 2020
+  write: IOPS=1799, BW=112MiB/s (118MB/s)(6749MiB/60023msec); 0 zone resets
+    clat (usec): min=11, max=72620, avg=1780.32, stdev=6428.58
+     lat (usec): min=11, max=72621, avg=1781.53, stdev=6428.73
+    clat percentiles (usec):
+     |  1.00th=[   34],  5.00th=[   58], 10.00th=[   63], 20.00th=[   69],
+     | 30.00th=[   73], 40.00th=[   94], 50.00th=[  235], 60.00th=[  281],
+     | 70.00th=[  310], 80.00th=[  343], 90.00th=[  392], 95.00th=[19268],
+     | 99.00th=[32900], 99.50th=[33817], 99.90th=[42730], 99.95th=[44303],
+     | 99.99th=[52691]
+   bw (  KiB/s): min=50432, max=3550720, per=100.00%, avg=142489.07, stdev=95285.35, samples=388
+   iops        : min=  788, max=55480, avg=2226.37, stdev=1488.83, samples=388
+  lat (usec)   : 20=0.03%, 50=2.84%, 100=37.76%, 250=11.88%, 500=41.11%
+  lat (usec)   : 750=0.20%, 1000=0.01%
+  lat (msec)   : 2=0.03%, 4=0.01%, 10=0.06%, 20=1.23%, 50=4.83%
+  lat (msec)   : 100=0.01%
+  cpu          : usr=0.17%, sys=10.71%, ctx=23965, majf=0, minf=38
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,107984,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+
+Run status group 0 (all jobs):
+  WRITE: bw=112MiB/s (118MB/s), 112MiB/s-112MiB/s (118MB/s-118MB/s), io=6749MiB (7077MB), run=60023-60023msec
+
+Disk stats (read/write):
+  sda: ios=0/32116, merge=0/713, ticks=0/891365, in_queue=827876, util=66.36%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=64k -ioengine=psync -numjobs=4 -iodepth=64 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

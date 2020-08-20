@@ -1,0 +1,33 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=libaio, iodepth=16
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=96198: Sun Aug 16 13:13:41 2020
+  write: IOPS=1512, BW=94.5MiB/s (99.1MB/s)(5672MiB/60021msec); 0 zone resets
+    slat (usec): min=14, max=84383, avg=587.67, stdev=2721.42
+    clat (usec): min=12, max=116076, avg=8864.01, stdev=10380.76
+     lat (usec): min=275, max=116197, avg=9451.84, stdev=10932.72
+    clat percentiles (usec):
+     |  1.00th=[   262],  5.00th=[   265], 10.00th=[   269], 20.00th=[   277],
+     | 30.00th=[   281], 40.00th=[   293], 50.00th=[  1483], 60.00th=[ 12125],
+     | 70.00th=[ 12125], 80.00th=[ 16581], 90.00th=[ 23725], 95.00th=[ 31589],
+     | 99.00th=[ 31851], 99.50th=[ 35390], 99.90th=[ 46400], 99.95th=[ 76022],
+     | 99.99th=[101188]
+   bw (  KiB/s): min=36096, max=3422592, per=100.00%, avg=107542.69, stdev=356104.09, samples=108
+   iops        : min=  564, max=53478, avg=1680.34, stdev=5564.13, samples=108
+  lat (usec)   : 20=0.01%, 500=47.19%, 750=0.14%, 1000=0.04%
+  lat (msec)   : 2=4.41%, 4=0.01%, 10=0.23%, 20=32.36%, 50=15.55%
+  lat (msec)   : 100=0.07%, 250=0.02%
+  cpu          : usr=0.35%, sys=9.58%, ctx=4576, majf=0, minf=12
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=100.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.1%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,90757,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=16
+
+Run status group 0 (all jobs):
+  WRITE: bw=94.5MiB/s (99.1MB/s), 94.5MiB/s-94.5MiB/s (99.1MB/s-99.1MB/s), io=5672MiB (5948MB), run=60021-60021msec
+
+Disk stats (read/write):
+  sda: ios=0/21551, merge=0/324, ticks=0/948278, in_queue=905400, util=44.79%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=64k -ioengine=libaio -numjobs=1 -iodepth=16 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

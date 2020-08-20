@@ -1,0 +1,33 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=64
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=83694: Sun Aug 16 09:33:32 2020
+  write: IOPS=386k, BW=1508MiB/s (1581MB/s)(10.0GiB/6790msec); 0 zone resets
+    slat (nsec): min=1382, max=4891.1k, avg=1703.93, stdev=3092.20
+    clat (nsec): min=1207, max=5090.7k, avg=146578.55, stdev=26942.29
+     lat (usec): min=2, max=5092, avg=148.31, stdev=27.17
+    clat percentiles (usec):
+     |  1.00th=[  137],  5.00th=[  139], 10.00th=[  139], 20.00th=[  139],
+     | 30.00th=[  139], 40.00th=[  141], 50.00th=[  143], 60.00th=[  149],
+     | 70.00th=[  149], 80.00th=[  151], 90.00th=[  157], 95.00th=[  165],
+     | 99.00th=[  200], 99.50th=[  212], 99.90th=[  237], 99.95th=[  249],
+     | 99.99th=[  289]
+   bw (  MiB/s): min=  951, max= 1730, per=100.00%, avg=1626.72, stdev=214.39, samples=12
+   iops        : min=243574, max=442992, avg=416439.50, stdev=54885.10, samples=12
+  lat (usec)   : 2=0.01%, 4=0.01%, 10=0.01%, 20=0.01%, 50=0.01%
+  lat (usec)   : 100=0.01%, 250=99.95%, 500=0.05%
+  lat (msec)   : 10=0.01%
+  cpu          : usr=28.47%, sys=71.38%, ctx=85, majf=0, minf=13
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.1%, >=64=0.0%
+     issued rwts: total=0,2621440,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+
+Run status group 0 (all jobs):
+  WRITE: bw=1508MiB/s (1581MB/s), 1508MiB/s-1508MiB/s (1581MB/s-1581MB/s), io=10.0GiB (10.7GB), run=6790-6790msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/7399, merge=0/4, ticks=0/844001, in_queue=829816, util=69.91%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=4k -ioengine=libaio -numjobs=1 -iodepth=64 -rw=write -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

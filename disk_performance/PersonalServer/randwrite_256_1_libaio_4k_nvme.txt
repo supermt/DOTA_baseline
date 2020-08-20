@@ -1,0 +1,33 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=256
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=91752: Sun Aug 16 11:57:16 2020
+  write: IOPS=316k, BW=1233MiB/s (1293MB/s)(10.0GiB/8307msec); 0 zone resets
+    slat (nsec): min=1463, max=174113, avg=2009.49, stdev=612.77
+    clat (nsec): min=1834, max=1347.2k, avg=699690.19, stdev=36141.69
+     lat (usec): min=3, max=1350, avg=701.73, stdev=36.22
+    clat percentiles (usec):
+     |  1.00th=[  635],  5.00th=[  644], 10.00th=[  668], 20.00th=[  685],
+     | 30.00th=[  693], 40.00th=[  693], 50.00th=[  693], 60.00th=[  701],
+     | 70.00th=[  709], 80.00th=[  717], 90.00th=[  734], 95.00th=[  750],
+     | 99.00th=[  824], 99.50th=[  889], 99.90th=[ 1045], 99.95th=[ 1074],
+     | 99.99th=[ 1221]
+   bw (  MiB/s): min= 1038, max= 1504, per=100.00%, avg=1400.59, stdev=107.62, samples=14
+   iops        : min=265974, max=385232, avg=358551.50, stdev=27550.12, samples=14
+  lat (usec)   : 2=0.01%, 10=0.01%, 20=0.01%, 50=0.01%, 100=0.01%
+  lat (usec)   : 250=0.01%, 500=0.01%, 750=95.34%, 1000=4.44%
+  lat (msec)   : 2=0.21%
+  cpu          : usr=26.69%, sys=73.21%, ctx=83, majf=0, minf=12
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.1%
+     issued rwts: total=0,2621440,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=256
+
+Run status group 0 (all jobs):
+  WRITE: bw=1233MiB/s (1293MB/s), 1233MiB/s-1233MiB/s (1293MB/s-1293MB/s), io=10.0GiB (10.7GB), run=8307-8307msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/1170752, merge=0/6, ticks=0/981510, in_queue=1008, util=66.41%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=4k -ioengine=libaio -numjobs=1 -iodepth=256 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

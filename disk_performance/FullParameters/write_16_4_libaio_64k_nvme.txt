@@ -1,0 +1,34 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=libaio, iodepth=16
+...
+fio-3.16
+Starting 4 processes
+
+baseline_scanning: (groupid=0, jobs=4): err= 0: pid=201597: Mon Aug 17 19:57:07 2020
+  write: IOPS=65.5k, BW=4091MiB/s (4290MB/s)(40.0GiB/10012msec); 0 zone resets
+    slat (usec): min=9, max=8287, avg=49.01, stdev=115.95
+    clat (nsec): min=1296, max=9026.7k, avg=748601.89, stdev=462247.35
+     lat (usec): min=11, max=9086, avg=797.66, stdev=478.26
+    clat percentiles (usec):
+     |  1.00th=[  306],  5.00th=[  465], 10.00th=[  635], 20.00th=[  676],
+     | 30.00th=[  701], 40.00th=[  717], 50.00th=[  734], 60.00th=[  750],
+     | 70.00th=[  766], 80.00th=[  799], 90.00th=[  840], 95.00th=[  873],
+     | 99.00th=[  988], 99.50th=[ 1123], 99.90th=[ 8848], 99.95th=[ 8848],
+     | 99.99th=[ 8979]
+   bw (  MiB/s): min= 1845, max= 5430, per=100.00%, avg=4794.71, stdev=199.01, samples=65
+   iops        : min=29522, max=86892, avg=76715.20, stdev=3184.22, samples=65
+  lat (usec)   : 2=0.01%, 20=0.01%, 50=0.01%, 100=0.01%, 250=0.25%
+  lat (usec)   : 500=5.48%, 750=55.11%, 1000=38.30%
+  lat (msec)   : 2=0.48%, 4=0.01%, 10=0.37%
+  cpu          : usr=2.88%, sys=94.39%, ctx=62630, majf=0, minf=52
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=100.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.1%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,655360,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=16
+
+Run status group 0 (all jobs):
+  WRITE: bw=4091MiB/s (4290MB/s), 4091MiB/s-4091MiB/s (4290MB/s-4290MB/s), io=40.0GiB (42.9GB), run=10012-10012msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/12812, merge=0/10, ticks=0/920937, in_queue=896136, util=55.91%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=64k -ioengine=libaio -numjobs=4 -iodepth=16 -rw=write -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

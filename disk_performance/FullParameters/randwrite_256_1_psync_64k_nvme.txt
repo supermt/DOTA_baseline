@@ -1,0 +1,31 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 64.0KiB-64.0KiB, (W) 64.0KiB-64.0KiB, (T) 64.0KiB-64.0KiB, ioengine=psync, iodepth=256
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=93054: Sun Aug 16 12:13:55 2020
+  write: IOPS=27.8k, BW=1736MiB/s (1820MB/s)(10.0GiB/5900msec); 0 zone resets
+    clat (usec): min=13, max=53131, avg=30.28, stdev=405.61
+     lat (usec): min=13, max=53132, avg=30.56, stdev=405.61
+    clat percentiles (usec):
+     |  1.00th=[   14],  5.00th=[   15], 10.00th=[   15], 20.00th=[   15],
+     | 30.00th=[   16], 40.00th=[   16], 50.00th=[   16], 60.00th=[   17],
+     | 70.00th=[   17], 80.00th=[   18], 90.00th=[   20], 95.00th=[   22],
+     | 99.00th=[   40], 99.50th=[   57], 99.90th=[ 8455], 99.95th=[11994],
+     | 99.99th=[13304]
+   bw (  MiB/s): min= 1143, max= 3456, per=100.00%, avg=1958.97, stdev=793.22, samples=10
+   iops        : min=18297, max=55306, avg=31343.30, stdev=12691.62, samples=10
+  lat (usec)   : 20=92.71%, 50=6.70%, 100=0.37%, 250=0.11%
+  lat (msec)   : 10=0.03%, 20=0.09%, 100=0.01%
+  cpu          : usr=2.63%, sys=60.06%, ctx=357, majf=0, minf=9
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,163840,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=256
+
+Run status group 0 (all jobs):
+  WRITE: bw=1736MiB/s (1820MB/s), 1736MiB/s-1736MiB/s (1820MB/s-1820MB/s), io=10.0GiB (10.7GB), run=5900-5900msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/42771, merge=0/13, ticks=0/2097058, in_queue=2018940, util=75.57%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=64k -ioengine=psync -numjobs=1 -iodepth=256 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

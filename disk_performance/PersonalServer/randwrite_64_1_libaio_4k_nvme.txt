@@ -1,0 +1,32 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=64
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=91675: Sun Aug 16 11:56:07 2020
+  write: IOPS=318k, BW=1243MiB/s (1304MB/s)(10.0GiB/8236msec); 0 zone resets
+    slat (nsec): min=1453, max=70047, avg=1985.34, stdev=643.05
+    clat (nsec): min=1515, max=373686, avg=171505.30, stdev=10468.71
+     lat (usec): min=3, max=378, avg=173.52, stdev=10.57
+    clat percentiles (usec):
+     |  1.00th=[  157],  5.00th=[  157], 10.00th=[  161], 20.00th=[  165],
+     | 30.00th=[  169], 40.00th=[  169], 50.00th=[  172], 60.00th=[  172],
+     | 70.00th=[  174], 80.00th=[  178], 90.00th=[  180], 95.00th=[  182],
+     | 99.00th=[  219], 99.50th=[  227], 99.90th=[  253], 99.95th=[  273],
+     | 99.99th=[  297]
+   bw (  MiB/s): min= 1090, max= 1521, per=100.00%, avg=1414.75, stdev=98.64, samples=14
+   iops        : min=279076, max=389566, avg=362176.57, stdev=25252.06, samples=14
+  lat (usec)   : 2=0.01%, 4=0.01%, 10=0.01%, 20=0.01%, 50=0.01%
+  lat (usec)   : 100=0.01%, 250=99.88%, 500=0.12%
+  cpu          : usr=25.76%, sys=74.12%, ctx=78, majf=0, minf=12
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.1%, >=64=0.0%
+     issued rwts: total=0,2621440,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=64
+
+Run status group 0 (all jobs):
+  WRITE: bw=1243MiB/s (1304MB/s), 1243MiB/s-1243MiB/s (1304MB/s-1304MB/s), io=10.0GiB (10.7GB), run=8236-8236msec
+
+Disk stats (read/write):
+  nvme0n1: ios=0/1180971, merge=0/5, ticks=0/992834, in_queue=1656, util=67.38%
+fio -filename=/home/jinghuan/rocksdb_nvme/fiotest -bs=4k -ioengine=libaio -numjobs=1 -iodepth=64 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

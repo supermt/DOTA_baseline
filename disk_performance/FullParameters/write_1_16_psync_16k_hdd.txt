@@ -1,0 +1,34 @@
+baseline_scanning: (g=0): rw=write, bs=(R) 16.0KiB-16.0KiB, (W) 16.0KiB-16.0KiB, (T) 16.0KiB-16.0KiB, ioengine=psync, iodepth=1
+...
+fio-3.16
+Starting 16 processes
+
+baseline_scanning: (groupid=0, jobs=16): err= 0: pid=211289: Mon Aug 17 22:10:12 2020
+  write: IOPS=228k, BW=3556MiB/s (3729MB/s)(160GiB/46073msec); 0 zone resets
+    clat (usec): min=2, max=134531, avg=65.00, stdev=664.38
+     lat (usec): min=2, max=134531, avg=65.12, stdev=664.38
+    clat percentiles (usec):
+     |  1.00th=[    5],  5.00th=[    8], 10.00th=[    9], 20.00th=[   12],
+     | 30.00th=[   15], 40.00th=[   21], 50.00th=[   31], 60.00th=[   34],
+     | 70.00th=[   36], 80.00th=[   38], 90.00th=[   41], 95.00th=[   59],
+     | 99.00th=[  159], 99.50th=[  200], 99.90th=[ 9896], 99.95th=[12911],
+     | 99.99th=[20317]
+   bw (  MiB/s): min= 1244, max= 6307, per=100.00%, avg=3806.43, stdev=80.61, samples=1368
+   iops        : min=79676, max=403711, avg=243610.94, stdev=5159.24, samples=1368
+  lat (usec)   : 4=0.14%, 10=15.63%, 20=24.01%, 50=53.66%, 100=3.88%
+  lat (usec)   : 250=2.21%, 500=0.02%, 750=0.01%, 1000=0.01%
+  lat (msec)   : 2=0.01%, 4=0.02%, 10=0.31%, 20=0.08%, 50=0.01%
+  lat (msec)   : 100=0.01%, 250=0.01%
+  cpu          : usr=1.36%, sys=46.80%, ctx=5288213, majf=0, minf=215
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=0,10485760,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=1
+
+Run status group 0 (all jobs):
+  WRITE: bw=3556MiB/s (3729MB/s), 3556MiB/s-3556MiB/s (3729MB/s-3729MB/s), io=160GiB (172GB), run=46073-46073msec
+
+Disk stats (read/write):
+  sda: ios=0/8818, merge=0/37, ticks=0/539264, in_queue=522052, util=57.72%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=16k -ioengine=psync -numjobs=16 -iodepth=1 -rw=write -name=baseline_scanning -group_reporting -runtime=60 -size=10G 

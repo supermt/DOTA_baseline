@@ -1,0 +1,32 @@
+baseline_scanning: (g=0): rw=randwrite, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=256
+fio-3.16
+Starting 1 process
+
+baseline_scanning: (groupid=0, jobs=1): err= 0: pid=94510: Sun Aug 16 12:39:32 2020
+  write: IOPS=29.3k, BW=115MiB/s (120MB/s)(6876MiB/60010msec); 0 zone resets
+    slat (nsec): min=1564, max=26913k, avg=28979.82, stdev=615760.90
+    clat (usec): min=3, max=49120, avg=7750.19, stdev=8761.84
+     lat (usec): min=751, max=49135, avg=7779.22, stdev=8783.72
+    clat percentiles (usec):
+     |  1.00th=[  758],  5.00th=[  766], 10.00th=[  775], 20.00th=[  791],
+     | 30.00th=[  807], 40.00th=[  824], 50.00th=[  865], 60.00th=[11469],
+     | 70.00th=[13698], 80.00th=[16188], 90.00th=[21365], 95.00th=[23462],
+     | 99.00th=[31327], 99.50th=[31589], 99.90th=[31851], 99.95th=[33817],
+     | 99.99th=[35390]
+   bw (  KiB/s): min=50096, max=1301032, per=100.00%, avg=131590.40, stdev=252948.69, samples=107
+   iops        : min=12524, max=325258, avg=32897.55, stdev=63237.19, samples=107
+  lat (usec)   : 4=0.01%, 750=0.01%, 1000=52.92%
+  lat (msec)   : 2=1.17%, 4=3.08%, 10=2.11%, 20=29.41%, 50=11.30%
+  cpu          : usr=4.51%, sys=13.60%, ctx=3334, majf=0, minf=11
+  IO depths    : 1=0.1%, 2=0.1%, 4=0.1%, 8=0.1%, 16=0.1%, 32=0.1%, >=64=100.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.1%
+     issued rwts: total=0,1760374,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=0, window=0, percentile=100.00%, depth=256
+
+Run status group 0 (all jobs):
+  WRITE: bw=115MiB/s (120MB/s), 115MiB/s-115MiB/s (120MB/s-120MB/s), io=6876MiB (7210MB), run=60010-60010msec
+
+Disk stats (read/write):
+  sda: ios=0/401158, merge=0/92, ticks=0/925942, in_queue=228512, util=74.94%
+fio -filename=/home/jinghuan/rocksdb_hdd/fiotest -bs=4k -ioengine=libaio -numjobs=1 -iodepth=256 -rw=randwrite -name=baseline_scanning -group_reporting -runtime=60 -size=10G 
