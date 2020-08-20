@@ -1,0 +1,22 @@
+{
+    "cpu_set": [
+        12
+    ],
+    "memtable_size_set": [
+        "64*1024*1024"
+    ],
+    "storage_paths": [
+        {
+            "path": "/home/jinghuan/rocksdb_nvme",
+            "media_type": "NVMeSSD"
+        }
+    ],
+    "db_path": [
+        "{/home/jinghuan/rocksdb_nvme/, 10GB},{/home/jinghuan/rocksdb_hdd/, 200GB}",
+        "{/home/jinghuan/rocksdb_nvme/, 5GB},{/home/jinghuan/rocksdb_hdd/, 200GB}",
+        "{/home/jinghuan/rocksdb_nvme/, 1GB},{/home/jinghuan/rocksdb_hdd/, 200GB}",
+        "{/home/jinghuan/rocksdb_nvme/, 10GB},{/home/jinghuan/rocksdb_ssd/, 200GB}",
+        "{/home/jinghuan/rocksdb_nvme/, 5GB},{/home/jinghuan/rocksdb_ssd/, 200GB}",
+        "{/home/jinghuan/rocksdb_nvme/, 1GB},{/home/jinghuan/rocksdb_ssd/, 200GB}"
+    ]
+}
