@@ -24,6 +24,8 @@ if __name__ == '__main__':
 
     db_path_options = parameter_dict["db_path"]
 
+    path_map = parameter_dict["media_type_map"]
+
     # print(len(db_path_options))
     # for db_path_unit in db_path_options:
     #     db_path_string = "{"
@@ -36,12 +38,13 @@ if __name__ == '__main__':
         result_dir = result_dir_prefix + "/"
         db_path_string = "{"
         for db_path in db_path_set:
-            result_dir  += db_path['size'] + "_" +db_path['media'] + "&"
+            result_dir += db_path['size'] + "_" + path_map[db_path['path']] + "&"
             db_path_string += (db_path['path'] + ","+db_path['size'])
             db_path_string += "},{"
+        # print(result_dir)
         result_dir = result_dir[:-1]
         db_path_string = db_path_string[:-2]
-        env.set_storage_path(db_path_set[0]['path'],StorageMaterial.HYBRID)
+        env.set_storage_path(db_path_set[0]['path'], StorageMaterial.HYBRID)
         extend_options = {"db_path": db_path_string}
         runner = DB_launcher(
             env, result_dir, db_bench=DEFAULT_DB_BENCH, extend_options=extend_options)
