@@ -257,7 +257,7 @@ class DB_launcher:
                     target_dir = result_dir + "/" + \
                         str(int(memory_budget / 1024 / 1024)) + "MB"
                     if create_target_dir(target_dir):
-                        print(target_dir, "existing files", env.path_list)
+                        print("existing files in %s" % target_dir)
                     else:
                         temp_para_dict.update(self.options)
                         job = DB_TASK(temp_para_dict,
@@ -269,4 +269,5 @@ class DB_launcher:
 
         for task in self.db_bench_tasks:
             task.run()
+            # print(self.options)
             # pass

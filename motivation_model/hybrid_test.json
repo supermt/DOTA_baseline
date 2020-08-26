@@ -5,18 +5,209 @@
     "memtable_size_set": [
         "64*1024*1024"
     ],
-    "storage_paths": [
-        {
-            "path": "/home/jinghuan/rocksdb_nvme",
-            "media_type": "NVMeSSD"
-        }
+    "db_size": [
+        "10G",
+        "40G"
     ],
-    "db_path": [
-        "{/home/jinghuan/rocksdb_nvme/, 10GB},{/home/jinghuan/rocksdb_hdd/, 200GB}",
-        "{/home/jinghuan/rocksdb_nvme/, 5GB},{/home/jinghuan/rocksdb_hdd/, 200GB}",
-        "{/home/jinghuan/rocksdb_nvme/, 1GB},{/home/jinghuan/rocksdb_hdd/, 200GB}",
-        "{/home/jinghuan/rocksdb_nvme/, 10GB},{/home/jinghuan/rocksdb_ssd/, 200GB}",
-        "{/home/jinghuan/rocksdb_nvme/, 5GB},{/home/jinghuan/rocksdb_ssd/, 200GB}",
-        "{/home/jinghuan/rocksdb_nvme/, 1GB},{/home/jinghuan/rocksdb_ssd/, 200GB}"
+    "storage_paths": [],
+    "db_path_gen": {
+        "media_type_map": {
+            "/home/jinghuan/rocksdb_nvme/": "NVMeSSD",
+            "/home/jinghuan/rocksdb_hdd/": "SATAHDD",
+            "/home/jinghuan/rocksdb_ssd/": "SATASSD"
+        },
+        "media1_size": [
+            "1GB",
+            "5GB",
+            "10GB"
+        ]
+    },
+    "io_option": {
+        "compaction_style": [
+            0,
+            1
+        ]
+    },
+    "db_path1": [
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "10GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "5GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "1GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "10GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "5GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "1GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "10GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "5GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "1GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "10GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "5GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "1GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "10GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "5GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_hdd/",
+                "size": "1GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "10GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "5GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "1GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "200GB"
+            }
+        ]
     ]
 }
