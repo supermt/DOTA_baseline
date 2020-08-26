@@ -2,6 +2,9 @@ import json
 import re
 import gzip
 
+
+COLUMN_NUM = 6
+
 import traversal as tv
 
 def open_file(file_name):
@@ -55,13 +58,22 @@ def get_data_list(log_file):
 
 def get_row(dir_path):
     stdfile, logfile = tv.get_log_and_std_files(dir_path)
-    primary_key_list = dir_path.split("/")[-4:]
+    primary_key_list = dir_path.split("/")[-COLUMN_NUM:]
     data_row = ""
+    # for split in primary_key_list:
+    #     data_row += "'"+split.replace("StorageMaterial.", "")+"',"
 
-    for split in primary_key_list:
-        data_row += "'"+split.replace("StorageMaterial.", "")+"',"
+    media_string = primary_key_list[-4].split("&")[0].split(
+        "_")[1] + "+" + primary_key_list[-4].split("&")[1].split("_")[1]
 
-    print("handling "+logfile)
+    data_row += '"%s",' % primary_key_list[0]
+    data_row += '"%s",' % primary_key_list[1]
+    data_row += '"%s",' % media_string
+    data_row += '"%s",' % primary_key_list[-4].split("&")[0].split("_")[0]
+
+    data_row += '"%s",' % primary_key_list[-2]
+    data_row += '"%s",' % primary_key_list[-1]
+
     value_list = get_data_list(open_file(logfile))
     
     compaction_frequency = len(value_list[0])
@@ -71,6 +83,7 @@ def get_row(dir_path):
     for value in value_list:
         data_row += str(sum(value))+","
     return data_row[0:-1]
+
 
 def turn_list_to_sql_sentence(column_lists,sql_head="INSERT INTO speed_results VALUES"):
     

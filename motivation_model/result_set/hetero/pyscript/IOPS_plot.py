@@ -58,7 +58,7 @@ def legend_sorter(x, y):
         return x < y
 
 
-def plot_single_graph():
+def plot_single_graph(db_conn):
     df = pd.read_sql_query(
         "SELECT * FROM speed_results", db_conn)
 
@@ -70,8 +70,6 @@ def plot_single_graph():
                  facet_col="compaction_style",
                  facet_row="workload_size",
                  category_orders={
-                     "cpu": cpu_group,
-                     "batch_size": batch_size_group,
                      "media1_size": ['1GB', '5GB', '10GB'],
                      "media":["SATASSD+NVMeSSD","SATASSD+SATAHDD", 
                             "SATAHDD+NVMeSSD","SATAHDD+SATASSD",
@@ -95,7 +93,7 @@ def plot_single_graph():
     fig.update_yaxes(automargin=True)
     fig.update_xaxes(showgrid=False)
     # fig.show()
-    fig_name = "../image/%s.pdf" % "hetero"
+    fig_name = "../image/%s.pdf" % "IOPS"
     print("plotting fig %s finished" % fig_name)
     fig.write_image(fig_name)
     pass
@@ -120,21 +118,5 @@ if __name__ == "__main__":
 
     cursor = db_conn.cursor()
 
-    cpu_group = [2, 4, 8, 12]
-
-    cpu_group = [str(x) + "CPU" for x in cpu_group]
-#     bandwidth_group = ['400', '800', '1200', '1600', '2000']
-#     bandwidth_group = [x + "mb" for x in bandwidth_group]
-    size_color = {16: "rgb(66,106,199)", 32: "rgb(254,117,0)",
-                  64: "rgb(165,165,165)", 128: "rgb(255,194,0)"}
-    batch_size_to_color_map = {
-        "16MB": "rgb(66,106,199)",
-        "32MB": "rgb(254,117,0)",
-        "64MB": "rgb(165,165,165)",
-        "128MB": "rgb(255,194,0)"
-    }
-    media = ["SATASSD", "SATAHDD", "NVMeSSD"]
-    batch_size_group = ["64MB"]
-
-    plot_single_graph()
+    plot_single_graph(db_conn)
 #     # plot_by_io_option("block_size")
