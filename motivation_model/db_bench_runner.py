@@ -268,6 +268,6 @@ class DB_launcher:
     def run(self):
 
         for task in self.db_bench_tasks:
-            task.run()
+            # task.run()
             # print(self.options)
-            # pass
+            pass

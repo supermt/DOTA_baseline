@@ -1,5 +1,8 @@
 # default path parameter
 
+import os
+import sys
+
 from db_bench_option import DEFAULT_DB_BENCH
 from db_bench_option import load_config_file
 from db_bench_option import set_parameters_to_env
