@@ -1,3 +1,0 @@
-access_hint_on_compaction_start : compaction_fadvice
-
-"allow_fallocate":[true,false], // this options can not be set
