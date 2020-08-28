@@ -225,18 +225,31 @@ class DB_TASK:
                         du_result = du_line.split()[0]
                         if not du_result.isnumeric():
                             continue
-                        result_line.append({db_path:int(du_result)})
+                        result_line.append(db_path)
+                        result_line.append(int(du_result))
+                        
+                    if len(db_paths) == 0:
+                        db_path=self.parameter_list["db"]
+                        du_line = os.popen("du -s %s/" % db_path).read()
+                        # print(du_line)
+                        du_result = du_line.split()[0]
+                        if not du_result.isnumeric():
+                            continue
+                        result_line.append(db_path)
+                        result_line.append(int(du_result))
+
                     top_lines = os.popen("top -d %d -b -n 1 -p %d" %
                                          (gap, db_bench_process.pid)).read().splitlines()
                     cpu_util = float(top_lines[-1].split()[-4])
                     result_line.append(cpu_util)
                     io_counter_dict = psutil.disk_io_counters(perdisk=True)
                     for device in devices:
-                        result_line.append({device:
-                        [io_counter_dict[device].read_bytes,
-                        io_counter_dict[device].write_bytes]})
+                        result_line.append(device),
+                        result_line.append(io_counter_dict[device].read_bytes),
+                        result_line.append(io_counter_dict[device].write_bytes)
                     result_line = str(result_line)[1:-1]
                     stat_recorder.write(result_line+"\n")
+                    
                     pass
         except Exception as e:
             p = psutil.Process(db_bench_process.pid)

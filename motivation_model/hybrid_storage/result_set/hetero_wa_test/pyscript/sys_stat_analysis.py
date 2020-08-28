@@ -5,18 +5,20 @@ import string_utils
 import pandas as pd
 import plotly.express as px
 import traversal as tv
+import plotly.graph_objects as go
 import re
 
 TABLE_NAME_SYSSTAT_ANALYSIS = "compaction_analysis"
 TABLE_NAMES = ["nvme_only", "nvme_ssd", "nvme_hdd"]
 COLUMN_NUM = 6
 
+
 def create_data_table(conn):
     c = conn.cursor()
     c.execute("Drop Table if exists "+TABLE_NAME_SYSSTAT_ANALYSIS)
-    c.execute("CREATE TABLE "+TABLE_NAME_SYSSTAT_ANALYSIS+
-    " (compaction_style TEXT, workload_size REAL, media text, media1_size TEXT, cpu text, batch_size text"
-    + ", total_write REAL"
+    c.execute("CREATE TABLE "+TABLE_NAME_SYSSTAT_ANALYSIS +
+              " (compaction_style TEXT, workload_size REAL, media text, media1_size TEXT, cpu text, batch_size text"
+              + ", total_write REAL"
               ")")
     conn.commit()
 
@@ -84,25 +86,104 @@ def get_writed_bytes(df):
     hdd_write_bytes = df.iloc[-1][hdd_write_index] - \
         df.iloc[0][hdd_write_index]
 
-    # print(nvme_write_bytes, ssd_write_bytes, hdd_write_bytes)
+    print("Total Writed GB:", float(nvme_write_bytes +
+                                    ssd_write_bytes + hdd_write_bytes) / (1000*1000*1000))
     return nvme_write_bytes + ssd_write_bytes + hdd_write_bytes
-    pass
+
+
+def get_space_util(df):
+    if df.shape[1] == 15:
+        print("Disk usage GB",
+              float((df.iloc[-1][2] + df.iloc[-1][4]))/(1000*1000))
+        return df.iloc[-1][2]+df.iloc[-1][4]
+    else:
+        print("Disk usage GB",
+              float((df.iloc[-1][2]))/(1000*1000))
+        return df.iloc[-1][2]
+
+def plot_cpu_utils(dir_path):
+    fig_name = dir_path.replace("/","+").replace(".","")[1:]
+    filename = tv.get_stat_files(dir_path)
+    sys_stat_data = pd.read_csv(
+        dir_path + "/" + filename, header=None)
+    fig = go.Figure()
+        
+
+    if sys_stat_data.shape[1] == 15:
+        # hybrid 
+        fig.add_trace(go.Scatter(x=sys_stat_data[0],y=sys_stat_data[5],name='cpu_utils'))
+    else:
+        fig.add_trace(go.Scatter(x=sys_stat_data[0],y=sys_stat_data[3],name='cpu_utils'))
+        pass
+    fontsize = 20
+
+    fig.update_layout(
+        autosize=False,
+        width=1600,
+        height=900,
+        font=dict(size=fontsize),
+        # plot_bgcolor='white',
+    )
+    fig.update_yaxes(automargin=True)
+    fig.update_xaxes(showgrid=False)
+    # fig.show()
+    fig_name = "../image/cpu_util%s.pdf" % fig_name
+    print("plotting fig %s finished" % fig_name)
+    fig.write_image(fig_name)
+
+
+def plot_disk_utils(dir_path):
+    fig_name = dir_path.replace("/","+")
+    filename = tv.get_stat_files(dir_path)
+    sys_stat_data = pd.read_csv(
+        dir_path + "/" + filename, header=None)
+
+    fig = go.Figure()
+    sys_stat_data[2]/=(1024*1024)
+    if sys_stat_data.shape[1] == 15:
+        # hybrid 
+        sys_stat_data[4]/=(1024*1024)
+        fig.add_trace(go.Scatter(x=sys_stat_data[0],y=sys_stat_data[2],name='first_media_disk_usage'))
+        fig.add_trace(go.Scatter(x=sys_stat_data[0],y=sys_stat_data[4],name='second_media_disk_usage'))
+    else:
+        fig.add_trace(go.Scatter(x=sys_stat_data[0],y=sys_stat_data[2],name='disk_utils'))
+        pass
+    fig.add_trace(go.Scatter(x=sys_stat_data[0],y=[10 for i in sys_stat_data[0]],name='first_media_budget',line=dict(dash='dot')))
+    fig.add_trace(go.Scatter(x=sys_stat_data[0],y=[40 for i in sys_stat_data[0]],name='estimate workload size',line=dict(dash='dot')))
+    fontsize = 20
+
+    fig.update_layout(
+        autosize=False,
+        width=1600,
+        height=900,
+        font=dict(size=fontsize),
+        # plot_bgcolor='white',
+    )
+    fig.update_yaxes(automargin=True)
+    fig.update_xaxes(showgrid=False)
+    # fig.show()
+    fig_name = "../image/disk_util%s.pdf" % fig_name
+    print("plotting fig %s finished" % fig_name)
+    fig.write_image(fig_name)
+
 
 def get_row(dir_path):
     filename = tv.get_stat_files(dir_path)
-    total_writes = get_writed_bytes(pd.read_csv(dir_path + "/" + filename, header=None))
+    sys_stat_data = pd.read_csv(
+        dir_path + "/" + filename, header=None)
+    total_writes = get_writed_bytes(sys_stat_data)
+    space_util = get_space_util(sys_stat_data)
     primary_key_list = dir_path.split("/")[-COLUMN_NUM:]
-    print(primary_key_list)
+
     data_row = string_utils.pk_list_to_columns(primary_key_list)
     data_row += "%d" % total_writes
     return data_row
+
 
 if __name__ == '__main__':
     dirs = get_log_dirs("../")
     print("Directory Scanned")
 
-
-    
     db_conn = sqlite3.connect('speed_info.db')
     create_data_table(db_conn)
     # create_data_table(db_conn)
@@ -111,7 +192,9 @@ if __name__ == '__main__':
     for dir in dirs:
         print(dir)
         sql_data_row = get_row(dir)
+        plot_cpu_utils(dir)
+        plot_disk_utils(dir)
         sql_sentence = insert_sql_head + "(" + sql_data_row + ")"
         db_conn.execute(sql_sentence)
-    
-    paint_for_one_column('total_write',db_conn)
+
+    paint_for_one_column('total_write', db_conn)
