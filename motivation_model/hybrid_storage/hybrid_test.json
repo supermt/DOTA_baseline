@@ -28,7 +28,7 @@
             1
         ]
     },
-    "db_path1": [
+    "db_path": [
         [
             {
                 "path": "/home/jinghuan/rocksdb_nvme/",

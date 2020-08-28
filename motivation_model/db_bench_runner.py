@@ -2,7 +2,7 @@ import os
 import pathlib
 import subprocess
 from shutil import copyfile, rmtree
-
+import re
 import copy
 import psutil
 
@@ -45,10 +45,10 @@ def restrict_cpus_by_cgroup(count):
         if "cpu.cfs_period_us" in result_string:
             cpu_period_time = int(result_string.split(" ")[1])
     cpu_period_time = cpu_period_time
-    print("CPU period time is %d ms" %cpu_period_time)
+    print("CPU period time is %d ms" % cpu_period_time)
     cgset_result = subprocess.run(
         ['cgset', '-r', 'cpu.cfs_period_us='+str(cpu_period_time), CGROUP_NAME], stdout=subprocess.PIPE)
-    
+
     cgset_result = subprocess.run(
         ['cgset', '-r', 'cpu.cfs_quota_us='+str(count*cpu_period_time), CGROUP_NAME], stdout=subprocess.PIPE)
 
@@ -171,7 +171,6 @@ def create_target_dir(target_path):
     #     rmtree(target_path)
     #     pathlib.Path(target_path).mkdir(parents=True, exist_ok=False)
 
-
 class DB_TASK:
     db_bench = ""
     result_dir = ""
@@ -184,33 +183,67 @@ class DB_TASK:
         self.result_dir = copy.deepcopy(result_dir)
         self.cpu_cores = copy.deepcopy(cpu_cores)
 
-    def run(self, gap=10):
+    def run(self, gap=1):
         restrict_cpus(self.cpu_cores, CPU_RESTRICTING_TYPE)
         self.parameter_list["max_background_compactions"] = self.cpu_cores
-        # print("db task parameters:",self.parameter_list)
+        devices=["sda","sdb","nvme0n1"]
+        db_paths = []
+        # system_util_file = open("%s/util_file.csv"%self.result_dir,"w")
+        # system_util_file.write("cpu,memory,path1,path2")
 
-#        print("running in ",self.parameter_list["db"])
+        if "db_path" in self.parameter_list:
+            print("db_paths: %s" % self.parameter_list["db_path"])
+            regex = r"(\.\/\w+)*(\/\w+)+"
+            matches = re.finditer(
+                regex, self.parameter_list["db_path"], re.MULTILINE)
+            for m in matches:
+                db_paths.append("%s/" % m.group(0))
+            for db_path in db_paths:
+                os.system("rm -f %s*" % db_path)
 
-        # detect running status every 'gap' second
         try:
             timer = 0
             db_bench_process = start_db_bench(
                 self.db_bench, self.parameter_list["db"], self.parameter_list)
-#            print("Mission started, output is in:" + self.result_dir)
+            stat_recorder=open(self.parameter_list["db"]+"/stat_result.csv","w")
+
+            print("Mission started, output is in:%s" % self.result_dir)
             # create_target_dir(self.result_dir)
             while True:
                 try:
                     db_bench_process.wait(gap)
                     print("mission complete")
                     copy_current_data(self.parameter_list["db"], self.result_dir, timer,
-                                      ["stderr.txt", "stdout.txt", "LOG"])
+                                      ["stderr.txt", "stdout.txt", "LOG","stat_result.csv"])
                     break
                 except subprocess.TimeoutExpired:
                     timer = timer + gap
+                    # time, dbpath1,size,dbpath2,size, cpu_util,device1,iostat1...
+                    result_line=[timer]
+                    for db_path in db_paths:
+                        du_line = os.popen("du -s %s" % db_path).read()
+                        du_result = du_line.split()[0]
+                        if not du_result.isnumeric():
+                            continue
+                        result_line.append({db_path:int(du_result)})
+                    top_lines = os.popen("top -d %d -b -n 1 -p %d" %
+                                         (gap, db_bench_process.pid)).read().splitlines()
+                    cpu_util = float(top_lines[-1].split()[-4])
+                    result_line.append(cpu_util)
+                    io_counter_dict = psutil.disk_io_counters(perdisk=True)
+                    for device in devices:
+                        result_line.append({device:
+                        [io_counter_dict[device].read_bytes,
+                        io_counter_dict[device].write_bytes]})
+                    result_line = str(result_line)[1:-1]
+                    stat_recorder.write(result_line+"\n")
                     pass
-        except Exception:
+        except Exception as e:
             p = psutil.Process(db_bench_process.pid)
             print("stopping db_bench: " + str(db_bench_process.pid))
+            print(str(e))
+            copy_current_data(self.parameter_list["db"], self.result_dir, timer,
+                                ["stderr.txt", "stdout.txt", "LOG","/stat_result.csv"])
             p.terminate()  # or p.kill()
             # clean the directory
             # create_target_dir(self.result_dir)
@@ -268,6 +301,6 @@ class DB_launcher:
     def run(self):
 
         for task in self.db_bench_tasks:
-            # task.run()
+            task.run()
             # print(self.options)
-            pass
+            # pass

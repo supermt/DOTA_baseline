@@ -5,11 +5,25 @@
     "memtable_size_set": [
         "64*1024*1024"
     ],
+    "db_size": [
+        "40G"
+    ],
     "storage_paths": [],
-    "media_type_map": {
-        "/home/jinghuan/rocksdb_nvme/": "NVMeSSD",
-        "/home/jinghuan/rocksdb_hdd/": "SATAHDD",
-        "/home/jinghuan/rocksdb_ssd/": "SATASSD"
+    "db_path_gen": {
+        "media_type_map": {
+            "/home/jinghuan/rocksdb_nvme/": "NVMeSSD",
+            "/home/jinghuan/rocksdb_hdd/": "SATAHDD",
+            "/home/jinghuan/rocksdb_ssd/": "SATASSD"
+        },
+        "media1_size": [
+            "10GB"
+        ]
+    },
+    "io_option": {
+        "compaction_style": [
+            0,
+            1
+        ]
     },
     "db_path": [
         [
@@ -159,6 +173,36 @@
             },
             {
                 "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "10GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "5GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
+                "size": "200GB"
+            }
+        ],
+        [
+            {
+                "path": "/home/jinghuan/rocksdb_ssd/",
+                "size": "1GB"
+            },
+            {
+                "path": "/home/jinghuan/rocksdb_nvme/",
                 "size": "200GB"
             }
         ]
