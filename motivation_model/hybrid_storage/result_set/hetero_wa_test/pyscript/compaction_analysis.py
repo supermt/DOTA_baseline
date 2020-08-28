@@ -1,8 +1,11 @@
 from traversal import *
 
-from log_file_handler import *
+import traversal as tv
 import string_utils
 import plotly.express as px
+from log_file_handler import get_data_list, open_file
+
+COLUMN_NUM = 6
 
 TABLE_NAME_COMPACTION_ANALYSIS = "compaction_analysis"
 
@@ -22,6 +25,22 @@ def create_data_table(conn):
     conn.commit()
 
     print("table created")
+
+
+def get_row(dir_path):
+    stdfile, logfile = tv.get_log_and_std_files(dir_path)
+    primary_key_list = dir_path.split("/")[-COLUMN_NUM:]
+    data_row = string_utils.pk_list_to_columns(primary_key_list)
+
+    value_list = get_data_list(open_file(logfile))
+
+    compaction_frequency = len(value_list[0])
+
+    data_row += str(compaction_frequency)+","
+
+    for value in value_list:
+        data_row += str(sum(value))+","
+    return data_row[0:-1]
 
 
 def paint_for_one_column(column_name, db_conn):

@@ -49,3 +49,8 @@ def get_log_and_std_files(prefix="."):
                 LOG_FILES.append(os.path.join(root, filename))
     return stdout_files, LOG_FILES[0]
 
+def get_stat_files(prefix="."):
+    for root,dirs,files in os.walk(prefix,topdown=False):
+        for filename in files:
+            if "stat_result" in filename:
+                return filename
