@@ -1,12 +1,16 @@
 {
-    "cpu_set": [
-        1,
-        2
+    "cpu_set": [    
+        4,
+        6,
+        8,
+        10,
+        12
     ],
     "memtable_size_set": [
         "16*1024*1024",
         "32*1024*1024",
-        "64*1024*1024"
+        "64*1024*1024",
+        "128*1024*1024"
     ],
     "storage_paths": [
         {
@@ -20,10 +24,6 @@
         {
             "path": "/media/jinghuan/rocksdb_hdd",
             "media_type": "SATAHDD"
-        },
-        {
-            "path": "/media/jinghuan/rocksdb_pmem",
-            "media_type": "PM"
         }
     ]
 }

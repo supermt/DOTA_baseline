@@ -18,7 +18,7 @@ if __name__ == '__main__':
     env = HardwareEnvironment()
     set_parameters_to_env(load_config_file(),env)
     
-    runner = DB_launcher(env,"/home/jinghuan/basic_results", db_bench=DEFAULT_DB_BENCH)
+    runner = DB_launcher(env,"/home/jinghuan/fillrandom", db_bench=DEFAULT_DB_BENCH,extend_options={"duration":3600})
 
     runner.run()
     reset_CPUs()

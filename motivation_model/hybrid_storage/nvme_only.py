@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     result_dir_prefix = "/home/jinghuan/hetero_wa_test/"
 
-    size_map = {"10G": "10737418240", "40G": "48318382080"}
+    size_map = {"10G": "10737418240", "40G": "48318382080","80G":"85899345920"}
     compaction_style_map = {0: "level", 1: "universal"}
     for compaction_style in parameter_dict['io_option']["compaction_style"]:
         for db_size in parameter_dict['db_size']:

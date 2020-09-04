@@ -166,10 +166,7 @@ def create_target_dir(target_path):
         return True
     else:
         return False
-    # except:
-    #     print("Path Exists, clearing the files")
-    #     rmtree(target_path)
-    #     pathlib.Path(target_path).mkdir(parents=True, exist_ok=False)
+
 
 class DB_TASK:
     db_bench = ""
@@ -183,13 +180,85 @@ class DB_TASK:
         self.result_dir = copy.deepcopy(result_dir)
         self.cpu_cores = copy.deepcopy(cpu_cores)
 
-    def run(self, gap=1):
+    def error_handling(self, db_bench_process, timer, exception):
+        p = psutil.Process(db_bench_process.pid)
+        print("stopping db_bench: " + str(db_bench_process.pid))
+        print(str(exception))
+        copy_current_data(self.parameter_list["db"], self.result_dir, timer,
+                          ["stderr.txt", "stdout.txt", "LOG", "/stat_result.csv"])
+        p.terminate()  # or p.kill()
+        reset_CPUs()
+
+    def copy_result_files(self, db_bench_process, gap, timer):
+        db_bench_process.wait(gap)
+        print("mission complete")
+        if self.cpu_cores == CPU_IN_TOTAL:
+            copy_current_data(self.parameter_list["db"], self.result_dir, timer,
+                          ["stderr.txt", "stdout.txt", "LOG", "stat_result.csv"])
+        else:
+            copy_current_data(self.parameter_list["db"], self.result_dir, timer,
+                          ["stderr.txt", "stdout.txt", "LOG"])
+                          
+    def run_in_limited_cpu(self, gap=10):
         restrict_cpus(self.cpu_cores, CPU_RESTRICTING_TYPE)
         self.parameter_list["max_background_compactions"] = self.cpu_cores
-        devices=["sda","sdb","nvme0n1"]
+
+        try:
+            timer = 0
+            db_bench_process = start_db_bench(
+                self.db_bench, self.parameter_list["db"], self.parameter_list)
+            print("Mission started, output is in:%s" % self.result_dir)
+            # create_target_dir(self.result_dir)
+            while True:
+                try:
+                    self.copy_result_files(db_bench_process, gap, timer)
+                    break
+                except subprocess.TimeoutExpired:
+                    timer = timer + gap
+                    pass
+        except Exception as e:
+            self.error_handling(db_bench_process, timer, e)
+        return
+
+    def record_system_stat(self, timer, db_paths, gap, db_bench_process, devices, stat_recorder):
+        result_line = [timer]
+        for db_path in db_paths:
+            du_line = os.popen("du -s %s" % db_path).read()
+            du_result = du_line.split()[0]
+            if not du_result.isnumeric():
+                return
+            result_line.append(db_path)
+            result_line.append(int(du_result))
+
+        if len(db_paths) == 0:
+            db_path = self.parameter_list["db"]
+            du_line = os.popen("du -s %s/" % db_path).read()
+            # print(du_line)
+            du_result = du_line.split()[0]
+            if not du_result.isnumeric():
+                return
+            
+            result_line.append(db_path)
+            result_line.append(int(du_result))
+
+        top_lines = os.popen("top -d %d -b -n 1 -p %d" %
+                             (gap, db_bench_process.pid)).read().splitlines()
+        cpu_util = float(top_lines[-1].split()[-4])
+        result_line.append(cpu_util)
+        io_counter_dict = psutil.disk_io_counters(perdisk=True)
+        for device in devices:
+            result_line.append(device),
+            result_line.append(io_counter_dict[device].read_bytes),
+            result_line.append(io_counter_dict[device].write_bytes)
+        result_line = str(result_line)[1:-1]
+        stat_recorder.write(result_line+"\n")
+        return
+
+    def run_in_full_cpu(self, gap=1):
+        restrict_cpus(self.cpu_cores, CPU_RESTRICTING_TYPE)
+        self.parameter_list["max_background_compactions"] = self.cpu_cores
+        devices = ["sda", "sdb", "nvme0n1"]
         db_paths = []
-        # system_util_file = open("%s/util_file.csv"%self.result_dir,"w")
-        # system_util_file.write("cpu,memory,path1,path2")
 
         if "db_path" in self.parameter_list:
             print("db_paths: %s" % self.parameter_list["db_path"])
@@ -205,66 +274,34 @@ class DB_TASK:
             timer = 0
             db_bench_process = start_db_bench(
                 self.db_bench, self.parameter_list["db"], self.parameter_list)
-            stat_recorder=open(self.parameter_list["db"]+"/stat_result.csv","w")
+            stat_recorder = open(
+                self.parameter_list["db"]+"/stat_result.csv", "w")
 
             print("Mission started, output is in:%s" % self.result_dir)
             # create_target_dir(self.result_dir)
             while True:
                 try:
-                    db_bench_process.wait(gap)
-                    print("mission complete")
-                    copy_current_data(self.parameter_list["db"], self.result_dir, timer,
-                                      ["stderr.txt", "stdout.txt", "LOG","stat_result.csv"])
-                    break
+                    self.copy_result_files(db_bench_process, gap, timer)
                 except subprocess.TimeoutExpired:
                     timer = timer + gap
                     # time, dbpath1,size,dbpath2,size, cpu_util,device1,iostat1...
-                    result_line=[timer]
-                    for db_path in db_paths:
-                        du_line = os.popen("du -s %s" % db_path).read()
-                        du_result = du_line.split()[0]
-                        if not du_result.isnumeric():
-                            continue
-                        result_line.append(db_path)
-                        result_line.append(int(du_result))
-                        
-                    if len(db_paths) == 0:
-                        db_path=self.parameter_list["db"]
-                        du_line = os.popen("du -s %s/" % db_path).read()
-                        # print(du_line)
-                        du_result = du_line.split()[0]
-                        if not du_result.isnumeric():
-                            continue
-                        result_line.append(db_path)
-                        result_line.append(int(du_result))
-
-                    top_lines = os.popen("top -d %d -b -n 1 -p %d" %
-                                         (gap, db_bench_process.pid)).read().splitlines()
-                    cpu_util = float(top_lines[-1].split()[-4])
-                    result_line.append(cpu_util)
-                    io_counter_dict = psutil.disk_io_counters(perdisk=True)
-                    for device in devices:
-                        result_line.append(device),
-                        result_line.append(io_counter_dict[device].read_bytes),
-                        result_line.append(io_counter_dict[device].write_bytes)
-                    result_line = str(result_line)[1:-1]
-                    stat_recorder.write(result_line+"\n")
-                    
+                    self.record_system_stat(
+                        timer, db_paths, gap, db_bench_process, devices, stat_recorder)
                     pass
         except Exception as e:
-            p = psutil.Process(db_bench_process.pid)
-            print("stopping db_bench: " + str(db_bench_process.pid))
-            print(str(e))
-            copy_current_data(self.parameter_list["db"], self.result_dir, timer,
-                                ["stderr.txt", "stdout.txt", "LOG","/stat_result.csv"])
-            p.terminate()  # or p.kill()
+            self.error_handling(db_bench_process, timer, e)
             # clean the directory
             # create_target_dir(self.result_dir)
             # restore all cpus
-            reset_CPUs()
 
         # reset_CPUs()
         return
+
+    def run(self, gap=10, force_record=False):
+        if self.cpu_cores == CPU_IN_TOTAL or force_record == True:
+            self.run_in_full_cpu(gap)
+        else:
+            self.run_in_limited_cpu(gap)
 
 
 class DB_launcher:
