@@ -122,6 +122,11 @@ def basic_tuning(parameter_list):
     # int(parameter_list["write_buffer_size"]) * int(
     # parameter_list["min_write_buffer_number_to_merge"]) * int(parameter_list["level0_file_num_compaction_trigger"])
 
+def set_qps_report_location(parameter_list):
+    if "report_interval_seconds" in parameter_list:
+        print("report qps in report.csv")
+        parameter_list["report_file"]=parameter_list["db"]+"/report.csv"
+    
 
 def parameter_tuning(db_bench, para_dic={}):
     if db_bench == "":
@@ -138,6 +143,7 @@ def parameter_tuning(db_bench, para_dic={}):
     # choose tuning strategy
     basic_tuning(parameter_list)
     tuning_strategy_l0_equals_l1(parameter_list)
+    set_qps_report_location(parameter_list)
 
     # some values need calculation
     parameter_list["num"] = str(para_dic.get("num", str(

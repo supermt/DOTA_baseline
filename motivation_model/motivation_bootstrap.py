@@ -16,9 +16,10 @@ import json
 
 if __name__ == '__main__':
     env = HardwareEnvironment()
-    set_parameters_to_env(load_config_file(),env)
-    
-    runner = DB_launcher(env,"/home/jinghuan/fillrandom", db_bench=DEFAULT_DB_BENCH,extend_options={"duration":3600})
+    set_parameters_to_env(load_config_file(), env)
+
+    runner = DB_launcher(env, "/home/jinghuan/fillrandom",
+            db_bench=DEFAULT_DB_BENCH, extend_options={"report_interval_seconds": 1,"duration":1200})
 
     runner.run()
     reset_CPUs()

@@ -14,15 +14,15 @@
     ],
     "storage_paths": [
         {
-            "path": "/media/jinghuan/rocksdb_nvme",
+            "path": "/home/jinghuan/rocksdb_nvme",
             "media_type": "NVMeSSD"
         },
         {
-            "path": "/media/jinghuan/rocksdb_ssd",
+            "path": "/home/jinghuan/rocksdb_ssd",
             "media_type": "SATASSD"
         },
         {
-            "path": "/media/jinghuan/rocksdb_hdd",
+            "path": "/home/jinghuan/rocksdb_hdd",
             "media_type": "SATAHDD"
         }
     ]

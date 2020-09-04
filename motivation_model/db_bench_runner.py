@@ -152,8 +152,10 @@ def copy_current_data(src_dir, dst_dir, timestamp, file_names=["MEMORY_USAGE0"])
         src_dir = src_dir + "/"
     if dst_dir[-1] != '/':
         dst_dir = dst_dir + "/"
+    print(file_names)
     for file_name in file_names:
         print("Copying", file_name)
+        print(timestamp)
         copyfile(src_dir + file_name, dst_dir +
                  file_name + "_" + str(timestamp))
     return
@@ -184,21 +186,22 @@ class DB_TASK:
         p = psutil.Process(db_bench_process.pid)
         print("stopping db_bench: " + str(db_bench_process.pid))
         print(str(exception))
-        copy_current_data(self.parameter_list["db"], self.result_dir, timer,
-                          ["stderr.txt", "stdout.txt", "LOG", "/stat_result.csv"])
         p.terminate()  # or p.kill()
         reset_CPUs()
 
     def copy_result_files(self, db_bench_process, gap, timer):
         db_bench_process.wait(gap)
         print("mission complete")
+
         if self.cpu_cores == CPU_IN_TOTAL:
+            print("copying with system stat")
             copy_current_data(self.parameter_list["db"], self.result_dir, timer,
-                          ["stderr.txt", "stdout.txt", "LOG", "stat_result.csv"])
+                          ["stderr.txt", "stdout.txt", "LOG", "stat_result.csv","report.csv"])
         else:
             copy_current_data(self.parameter_list["db"], self.result_dir, timer,
-                          ["stderr.txt", "stdout.txt", "LOG"])
-                          
+                          ["stderr.txt", "stdout.txt", "LOG","report.csv"])
+
+
     def run_in_limited_cpu(self, gap=10):
         restrict_cpus(self.cpu_cores, CPU_RESTRICTING_TYPE)
         self.parameter_list["max_background_compactions"] = self.cpu_cores
@@ -282,6 +285,7 @@ class DB_TASK:
             while True:
                 try:
                     self.copy_result_files(db_bench_process, gap, timer)
+                    break
                 except subprocess.TimeoutExpired:
                     timer = timer + gap
                     # time, dbpath1,size,dbpath2,size, cpu_util,device1,iostat1...
@@ -289,11 +293,7 @@ class DB_TASK:
                         timer, db_paths, gap, db_bench_process, devices, stat_recorder)
                     pass
         except Exception as e:
-            self.error_handling(db_bench_process, timer, e)
-            # clean the directory
-            # create_target_dir(self.result_dir)
-            # restore all cpus
-
+            self.error_handling(db_bench_process,timer,e)
         # reset_CPUs()
         return
 
@@ -301,7 +301,7 @@ class DB_TASK:
         if self.cpu_cores == CPU_IN_TOTAL or force_record == True:
             self.run_in_full_cpu(gap)
         else:
-            self.run_in_limited_cpu(gap)
+            self.run_in_limited_cpu(1)
 
 
 class DB_launcher:
