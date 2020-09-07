@@ -5,8 +5,6 @@ import log_file_handler as log_reader
 import stdout_file_handler as std_reader
 #from string_utils import bandwidth_string_sort
 from functools import cmp_to_key
-import plotly.graph_objects as go
-import plotly.subplots
 import pandas as pd
 
 
