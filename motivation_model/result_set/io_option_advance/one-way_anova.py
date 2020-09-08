@@ -1,9 +1,7 @@
 import scipy.stats as stats
-import researchpy as rp
-
+import csv
 from traversal import *
 import sqlite3
-import plotly.express as px
 from functools import cmp_to_key
 
 COLUMN_NUM = 5
@@ -29,6 +27,11 @@ def create_data_table(conn):
 def get_row(dir_path):
     stdfile, logfile = get_log_and_std_files(dir_path)
     primary_key_list = dir_path.split("/")[-COLUMN_NUM:]
+    if "jinghuan" in primary_key_list:	
+        primary_key_list = dir_path.split("/")[-(COLUMN_NUM+2):]
+        option_path = primary_key_list[1]+primary_key_list[2]+primary_key_list[3]
+        primary_key_list = [primary_key_list[0]]+ [option_path] + primary_key_list[4:]
+        print(primary_key_list)
     data_row = ""
     for split in primary_key_list:
         data_row += "'"+split.replace("StorageMaterial.", "")+"',"
@@ -46,15 +49,18 @@ def legend_sorter(x, y):
     else:
         return x < y
 
+ 
 
 def anova_one_option(io_option):
-    df = pd.read_sql_query(
-        "SELECT * FROM speed_results where io_option = '%s' and cpu != '1CPU' " % io_option, db_conn)
-
-    print("one way ANOVA in : " + io_option)
-
-    print(df.describe())
-
+    media_list=['SATAHDD','SATASSD','NVMeSSD']
+    result_list = []
+    for media in media_list:
+        df = pd.read_sql_query(
+             "SELECT * FROM speed_results where io_option = '%s' and cpu = '12CPU' and media = '%s'" % (io_option,media), db_conn)
+        # result_line = "%s,%s,%f" %(media,io_option,df.std()['IOPS'])
+        result_line = [media,io_option,df.std()['IOPS'],df.mean()['IOPS']]
+        result_list.append(result_line)
+    return result_list
 
 if __name__ == "__main__":
     dirs = get_log_dirs()
@@ -96,4 +102,10 @@ if __name__ == "__main__":
 
     # for io_option in io_options["io_option"]:
     #     anova_one_option(io_option)
-    anova_one_option("block_size")
+    csv_file = open('one-way-anova.csv','w',newline='')
+    csv_writer = csv.writer(csv_file,dialect='excel')
+    csv_writer.writerow(['media','io_option','std_of_IOPS','mean_of_IOPS'])
+    for io_option in io_options["io_option"]:
+        result_lines = anova_one_option(io_option)
+        for result in result_lines:
+            csv_writer.writerow(result)
