@@ -142,7 +142,7 @@ def parameter_tuning(db_bench, para_dic={}):
 
     # choose tuning strategy
     basic_tuning(parameter_list)
-    tuning_strategy_l0_equals_l1(parameter_list)
+    # tuning_strategy_l0_equals_l1(parameter_list)
     set_qps_report_location(parameter_list)
 
     # some values need calculation
