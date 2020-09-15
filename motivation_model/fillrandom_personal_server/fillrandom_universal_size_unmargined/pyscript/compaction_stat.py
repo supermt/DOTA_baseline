@@ -5,7 +5,7 @@ import string_utils
 import plotly.express as px
 from log_file_handler import get_data_list, open_file
 
-COLUMN_NUM = 6
+COLUMN_NUM = 3
 
 TABLE_NAME_COMPACTION_ANALYSIS = "compaction_analysis"
 
@@ -14,7 +14,7 @@ def create_data_table(conn):
     c = conn.cursor()
 
     c.execute("Drop Table if exists "+TABLE_NAME_COMPACTION_ANALYSIS)
-    c.execute("CREATE TABLE "+TABLE_NAME_COMPACTION_ANALYSIS+" (compaction_style TEXT, workload_size REAL, media text, media1_size TEXT, cpu text, batch_size text" +
+    c.execute("CREATE TABLE "+TABLE_NAME_COMPACTION_ANALYSIS+" (media text, cpu text, batch_size text" +
               #   ",IOPS INT, average_latency_ms REAL" +
               ",compaction_frequency INT, overall_compaction_latency INT" +
               ",overall_compaction_cpu_latency INT" +
@@ -33,11 +33,10 @@ def get_row(dir_path):
     data_row = string_utils.pk_list_to_columns(primary_key_list)
 
     value_list = get_data_list(open_file(logfile))
-
     compaction_frequency = len(value_list[0])
 
     data_row += str(compaction_frequency)+","
-
+    
     for value in value_list:
         data_row += str(sum(value))+","
     return data_row[0:-1]
@@ -52,20 +51,19 @@ def paint_for_one_column(column_name, db_conn):
     column_label = column_label.replace("overall", "cumulative")
     column_label = column_label.replace("latency", "latency (ms)")
 
-    fig = px.bar(df, x="media1_size", y=column_name, color="media", barmode="group",
-                 facet_col="compaction_style",
-                 facet_row="workload_size",
+    fig = px.bar(df, x="cpu", y=column_name, color="batch_size", barmode="group",
+                 facet_col="media",
+                #  facet_row="batch_size",
                  category_orders={
-                     "media1_size": ['1GB', '5GB', '10GB'],
-                     "media": ["SATASSD+NVMeSSD", "SATASSD+SATAHDD",
-                               "SATAHDD+NVMeSSD", "SATAHDD+SATASSD",
-                               "NVMeSSD+SATASSD", "NVMeSSD+SATAHDD",
-                               ]
+                     "media": ["SATASSD", "SATAHDD", "NVMeSSD"],
+                     "cpu": [str(x)+"CPU" for x in [1,2,4,8,12]],
+                     "batch_size":[str(x)+"MB" for x in range(16,128)]
                      #  "media": sorted_media,
                      #  "media1_size":["1GB","5GB","10GB"]
                  },
                  labels={"media1_size": "Capacity of First Medium",
-                         "workload_size": "Estimate Input Size", "IOPS": "Throughput (OPs/sec)"},
+                         "workload_size": "Estimate Input Size", "IOPS": "OPs/sec","cpu":"",
+                         "batch_size":"Operation Batch Size"},
                  #  color_discrete_map=batch_size_to_color_map
                  )
     fontsize = 20
@@ -105,27 +103,7 @@ if __name__ == '__main__':
     df = pd.read_sql_query(
         "SELECT * FROM "+TABLE_NAME_COMPACTION_ANALYSIS, db_conn)
 
-    print(df)
     column_list = list(df.columns.values)[-6:]
     print(column_list)
     for column in column_list:
         paint_for_one_column(column, db_conn)
-#     cpu_group = [1, 4, 8, 12]
-#     cpu_group = [str(x) + "CPU" for x in cpu_group]
-#     bandwidth_group = ['400', '800', '1200', '1600', '2000']
-#     bandwidth_group = [x + "mb" for x in bandwidth_group]
-# #   size_color = {16: "rgb(66,106,199)", 32: "rgb(254,117,0)",
-# #              64: "rgb(165,165,165)", 128: "rgb(255,194,0)"}
-#     batch_size_to_color_map = {
-#         "16MB": "rgb(66,106,199)",
-#         "32MB": "rgb(254,117,0)",
-#         "64MB": "rgb(165,165,165)",
-#         "128MB": "rgb(255,194,0)"
-#     }
-#     media = "NVMeSSD"
-#     batch_size_group = ["16MB", "32MB", "64MB", "128MB"]
-
-#     df = pd.read_sql_query(
-#         "SELECT * FROM "+TABLE_NAME_COMPACTION_ANALYSIS, db_conn)
-
-#     column_list = list(df.columns.values)[4:]
