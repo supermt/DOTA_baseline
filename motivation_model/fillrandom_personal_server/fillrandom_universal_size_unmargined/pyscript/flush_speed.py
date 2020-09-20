@@ -23,9 +23,19 @@ def readlines_from_log_file(log_file_name):
     return log_lines
 
 
-def get_flush_tuplers(log_lines):
+def get_flush_tuplers(log_dir, log_lines):
     flush_start_lines = [x for x in log_lines if FLUSH_LOG_BEGIN in x]
     flush_end_lines = [x for x in log_lines if FLUSH_LOG_END in x]
+
+    # extract the start time from log[0]
+    regex = r"\d+\/\d+\/\d+-\d+:\d+:\d+\.\d+"
+    matches = re.search(regex, log_lines[0], re.MULTILINE)
+    machine_start_time = matches.group(0)
+    start_time = datetime.datetime.strptime(
+        machine_start_time, "%Y/%m/%d-%H:%M:%S.%f")
+    start_time_micros = int(time.mktime(
+        start_time.timetuple())) * 1000000 + start_time.microsecond
+    # end extracting
 
     flush_start_row_list = []
     flush_end_row_list = []
@@ -49,12 +59,13 @@ def get_flush_tuplers(log_lines):
     df1 = df1.sort_values('job')
     df2 = df2.sort_values('job')
 
-    flush_speed = pd.DataFrame(columns=["job_id", "flush_size", "flush_speed"])
+    flush_speed = pd.DataFrame(
+        columns=["job_id", "flush_size", "flush_speed", "start_time", "end_time"])
     for index, row in df1.iterrows():
         flush_speed.loc[index] = [row['job'], row["total_data_size"],
                                   row["total_data_size"] /
                                   (df2['time_micros']
-                                   [index] - row['time_micros'])]
+                                   [index] - row['time_micros']), row['time_micros']-start_time_micros, df2['time_micros'][index]-start_time_micros]
 
     flush_size_list = list(flush_speed["flush_size"])
     flush_speed_list = list(flush_speed["flush_speed"])
@@ -63,6 +74,8 @@ def get_flush_tuplers(log_lines):
     flush_speed_list.sort()
 
     index_list = [int(x*len(flush_size_list)) for x in percentage_list]
+    flush_speed.to_csv("tables/"+log_dir.replace(
+        "/", "_").replace(".", "")+"flush_infos.csv")
 
     return index_list, [flush_size_list[i] for i in index_list], [flush_speed_list[i] for i in index_list]
 
@@ -75,7 +88,7 @@ def sql_row(dir, flush_size, flush_speed):
 def get_line_from_dir(log_dir):
     log_lines = readlines_from_log_file(get_log_and_std_files(log_dir)[1])
     index_list, flush_size_list, flush_speed_list = get_flush_tuplers(
-        log_lines)
+        log_dir, log_lines)
     return percentage_list, list(flush_speed_list)
 
 
