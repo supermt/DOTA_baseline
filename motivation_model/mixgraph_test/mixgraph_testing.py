@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parameter_dict = load_config_file('mixgraph.json')
     set_parameters_to_env(parameter_dict, env)
 
-    result_dir_prefix = "/media/jinghuan/hdd/mixgraph"
+    result_dir_prefix = "/home/supermt/mixgraph_test_largeset"
 
     # generate the keyrange of rows
     Key_distribution_config = {
@@ -62,8 +62,7 @@ if __name__ == '__main__':
     }
 
     shared_config = {"benchmarks": "mixgraph",
-                     "num": 50000000, "report_interval_seconds": 1,
-                    #  "read": 420000000,
+                     "num": 500000000, "report_interval_seconds": 1,
                      "perf_level": 2,
                      "key_size": 48}
 
