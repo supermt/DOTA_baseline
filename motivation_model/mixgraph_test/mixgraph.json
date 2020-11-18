@@ -1,32 +1,29 @@
 {
     "cpu_set": [
-        6,
-        12
+   	8,16,32 
     ],
     "memtable_size_set": [
-        "64*1024*1024"
+        "64*1024*1024",
+	"128*1024*1024"
     ],
     "storage_paths": [
         {
-            "path": "/home/jinghuan/rocksdb_ssd",
+            "path": "/home/supermt/rocksdb_ssd",
             "media_type": "SATASSD"
         },
         {
-            "path": "/home/jinghuan/rocksdb_hdd",
+            "path": "/home/supermt/rocksdb_hdd",
             "media_type": "SATAHDD"
         },
         {
-            "path": "/home/jinghuan/rocksdb_nvme",
+            "path": "/home/supermt/rocksdb_nvme",
+            "media_type": "NVMeSSD"
+        },
+	{
+            "path": "/home/supermt/rocksdb_nvme",
             "media_type": "NVMeSSD"
         }
+
     ],
-    "io_options": {
-        "max_background_compactions": [
-            1,
-            4,
-            8,
-            12
-        ]
-    },
     "mix_graph": {}
 }
