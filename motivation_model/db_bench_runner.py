@@ -204,7 +204,7 @@ class DB_TASK:
 
     def run_in_limited_cpu(self, gap=10):
         restrict_cpus(self.cpu_cores, CPU_RESTRICTING_TYPE)
-        self.parameter_list["max_background_compactions"] = self.cpu_cores
+#        self.parameter_list["max_background_compactions"] = self.cpu_cores
 
         try:
             timer = 0
@@ -334,7 +334,7 @@ class DB_launcher:
             temp_para_dict["db"] = str(material[0])
             for cpu_count in env.get_current_CPU_experiment_set():
                 result_dir = material_dir + "/" + str(cpu_count) + "CPU"
-                temp_para_dict["max_background_compactions"] = str(cpu_count)
+#                temp_para_dict["max_background_compactions"] = str(cpu_count)
                 for memory_budget in env.get_current_memory_experiment_set():
                     temp_para_dict["write_buffer_size"] = memory_budget
                     target_dir = result_dir + "/" + \
