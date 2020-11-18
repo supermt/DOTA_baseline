@@ -41,7 +41,7 @@ if __name__ == '__main__':
     parameter_dict = load_config_file('io_option_advance_sets.json')
     set_parameters_to_env(parameter_dict,env)
 
-    result_dir_prefix = "/home/jinghuan/io_option_difference"
+    result_dir_prefix = "/media/jinghuan/hdd/l0_l1_inference/io_option_difference"
 
 
     io_options = parameter_dict["io_options"]
@@ -50,7 +50,7 @@ if __name__ == '__main__':
         for io_option_value in io_options[io_option_key]:
             result_dir = result_dir_prefix + "/%s/%s" % (io_option_key, str(io_option_value))
             print(result_dir)
-            extend_options = {io_option_key:io_option_value}
+            extend_options = {io_option_key:io_option_value,"report_interval_seconds":100}
             runner = DB_launcher(env,result_dir, db_bench=DEFAULT_DB_BENCH,extend_options=extend_options)
             runner.run()
             reset_CPUs()
