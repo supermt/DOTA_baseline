@@ -1,4 +1,7 @@
 **/__pycache__/*
 *.ini
 formatted_data/*
-
+**/*.pyc
+**/key_distribution
+default.ini
+motivation_bootstrap.py
