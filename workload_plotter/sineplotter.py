@@ -29,7 +29,7 @@ def sine_plot(FLAGS):
     sine_c = FLAGS.sine_c
     sine_d = FLAGS.sine_d
 
-    time = np.arange(0, 24 * 3600, 1)
+    time = np.arange(0, 14 * 24 * 3600, 1)
 
     read_rate_curve = []
     write_rate_curve = []
