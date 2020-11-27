@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parameter_dict = load_config_file('mixgraph.json')
     set_parameters_to_env(parameter_dict, env)
 
-   result_dir_prefix = "/home/supermt/mixgraph_test_largeset"
+    result_dir_prefix = "/home/supermt/mixgraph_90_keyrange"
 
     # generate the keyrange of rows
     Key_distribution_config = {
@@ -32,7 +32,7 @@ if __name__ == '__main__':
         "keyrange_dist_b": -2.917,
         "keyrange_dist_c": 0.0164,
         "keyrange_dist_d": -0.08082,
-        "keyrange_num": 15
+        "keyrange_num": 90
     }
 
     # value_size distribution
@@ -76,6 +76,7 @@ if __name__ == '__main__':
     extend_option_map.update(qps_config)
     extend_option_map.update(shared_config)
 
+    print(env)
 
     runner = DB_launcher(
         env, result_dir, db_bench=DEFAULT_DB_BENCH, extend_options=extend_option_map)
