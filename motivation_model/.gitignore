@@ -5,3 +5,6 @@ formatted_data/*
 **/key_distribution
 default.ini
 motivation_bootstrap.py
+**/**.db
+**/**.journal*
+**/.vscode

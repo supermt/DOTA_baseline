@@ -4,7 +4,7 @@ import plotly.express as px
 from functools import cmp_to_key
 import string_utils
 
-COLUMN_NUM = 3
+COLUMN_NUM = 4
 SPEED_TABLE_NAME = "speed_results"
 
 
@@ -12,7 +12,7 @@ def create_data_table(conn):
     c = conn.cursor()
 
     c.execute('''Drop Table if exists speed_results''')
-    c.execute("CREATE TABLE %s ( media TEXT, cpu TEXT, batch_size text," % SPEED_TABLE_NAME+
+    c.execute("CREATE TABLE %s (keyrange_count INT, media TEXT, cpu TEXT, batch_size text," % SPEED_TABLE_NAME +
               "IOPS INT, average_latency_ms REAL" +
               # ",compaction_frequency INT, overall_compaction_latency INT" +
               # ",overall_compaction_cpu_latency INT"+
@@ -27,7 +27,7 @@ def create_data_table(conn):
 
 def get_row(dir_path):
     stdfile, logfile = get_log_and_std_files(dir_path)
-    primary_key_list = dir_path.split("/")[-COLUMN_NUM:]
+    primary_key_list = dir_path.split(os.sep)[-COLUMN_NUM:]
     data_row = string_utils.pk_list_to_columns(primary_key_list)
 
     iops, avg_latency = std_reader.get_iops_and_avg_latency(stdfile[0])
@@ -47,27 +47,26 @@ def legend_sorter(x, y):
         return x < y
 
 
-def plot_single_graph(db_conn):
-    df = pd.read_sql_query(
-        "SELECT * FROM speed_results", db_conn)
+def plot_single_graph(paint_df, IOPS_or_latency="IOPS"):
 
-    print(df)
     # legends = df['media1_size'].unique()
     # legends = sorted(legends,key=cmp_to_key(legend_sorter))
 
-    fig = px.bar(df, x="cpu", y="IOPS", color="batch_size", barmode="group",
-                 facet_col="media",
-                #  facet_row="batch_size",
+    fig = px.bar(paint_df, x="keyrange_count", y=IOPS_or_latency, color="media", barmode="group",
+                 facet_col="cpu",
+                 facet_row="batch_size",
                  category_orders={
-                     "media": ["SATASSD", "SATAHDD", "NVMeSSD"],
-                     "cpu": [str(x)+"CPU" for x in [1,2,4,8,12]],
-                     "batch_size":[str(x)+"MB" for x in range(16,128)]
+                     "media": ["SATASSD", "SATAHDD", "NVMeSSD", "PM"],
+                     "cpu": [str(x)+"CPU" for x in [8, 16, 32]],
+                     "batch_size": [str(x)+"MB" for x in range(64, 128)]
                      #  "media": sorted_media,
                      #  "media1_size":["1GB","5GB","10GB"]
                  },
-                 labels={"media1_size": "Capacity of First Medium",
-                         "workload_size": "Estimate Input Size", "IOPS": "OPs/sec","cpu":"",
-                         "batch_size":"Operation Batch Size"},
+                 labels={"media": "Storage Media",
+                         "workload_size": "Estimate Input Size",
+                         "IOPS": "OPs/sec", "cpu": "CPU count",
+                         "batch_size": "Operation Batch Size",
+                         "keyrange_count": "number of keyrange"},
                  #  color_discrete_map=batch_size_to_color_map
                  )
     fontsize = 20
@@ -80,19 +79,21 @@ def plot_single_graph(db_conn):
         # plot_bgcolor='white',
     )
     fig.update_layout(legend=dict(
-    orientation="h",
-    yanchor="bottom",
-    y=1.1,
-    xanchor="left",
-    x=0.25,
-    font=dict(size=fontsize+4)
+        orientation="h",
+        yanchor="bottom",
+        y=1.1,
+        xanchor="left",
+        x=0.25,
+        font=dict(size=fontsize+4)
     ))
     fig.update_yaxes(automargin=True)
     fig.update_xaxes(showgrid=False)
     # fig.show()
-    fig_name = "../image/%s.pdf" % "IOPS"
+    fig_name = "./image/%s.pdf" % IOPS_or_latency
+    png_fig_name = "./image/%s.png" % IOPS_or_latency
     print("plotting fig %s finished" % fig_name)
     fig.write_image(fig_name)
+    fig.write_image(png_fig_name)
     pass
 
 
@@ -115,5 +116,8 @@ if __name__ == "__main__":
 
     cursor = db_conn.cursor()
 
-    plot_single_graph(db_conn)
+    paint_df = pd.read_sql_query(
+        "SELECT * FROM speed_results", db_conn)
+    plot_single_graph(paint_df)
+    plot_single_graph(paint_df, "average_latency_ms")
 #     # plot_by_io_option("block_size")

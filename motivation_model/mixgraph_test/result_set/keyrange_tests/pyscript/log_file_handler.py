@@ -5,6 +5,7 @@ import string_utils
 
 import traversal as tv
 
+
 def open_file(file_name):
     log_file = None
     if "gz" in file_name:
@@ -32,12 +33,16 @@ def get_data_list(log_file):
     compaction_input = []
     compaction_output = []
     compaction_redundant = []
+    l0_compaction = 0
     for line in log_file.readlines():
         line = str(line)
         line = re.search('(\{.+\})', line)
         if line:
             log_row = json.loads(line[0])
             # if "compaction_finished" in str(log_row):
+            if log_row['event'] == 'compaction_started':
+                if log_row['compaction_reason'] == "LevelL0FilesNum":
+                    l0_compaction += 1
             if log_row['event'] == 'compaction_finished':
                 compaction_latencies.append(
                     log_row['compaction_time_micros'])
@@ -51,11 +56,10 @@ def get_data_list(log_file):
                     log_row['num_input_records']-log_row['num_output_records'])
             if log_row['event'] == 'flush_finished':
                 handle_flush_line(log_row)
+    return [compaction_latencies, compaction_cpu_latencies, compaction_input, compaction_output, compaction_redundant, l0_compaction]
 
-    return [compaction_latencies,compaction_cpu_latencies,compaction_input,compaction_output,compaction_redundant]
 
+def turn_list_to_sql_sentence(column_lists, sql_head="INSERT INTO speed_results VALUES"):
 
-def turn_list_to_sql_sentence(column_lists,sql_head="INSERT INTO speed_results VALUES"):
-    
     sql_sentence = ""
     return sql_sentence
