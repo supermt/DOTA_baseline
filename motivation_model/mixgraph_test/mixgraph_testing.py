@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parameter_dict = load_config_file('mixgraph.json')
     set_parameters_to_env(parameter_dict, env)
 
-    result_dir_prefix = "/home/supermt/mixgraph_30_keyrange_100valuesize"
+    result_dir_prefix = "/home/supermt/mixgraph_30_keyrange_mixed_value_size"
 
     # generate the keyrange of rows
     Key_distribution_config = {
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     print(result_dir)
     extend_option_map = {}
     extend_option_map.update(Key_distribution_config)
-    # extend_option_map.update(value_size_config)
+    extend_option_map.update(value_size_config)
     extend_option_map.update(iter_config)
     extend_option_map.update(operation_ratio_config)
     extend_option_map.update(qps_config)
