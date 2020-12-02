@@ -1,4 +1,5 @@
-needed_arguments=1
+needed_arguments=0
+echo $1
 if [ "$#" -le "$needed_arguments" ];
 then
   echo "No enough arguments, missing workdir at $needed_arguments , received only $@"
