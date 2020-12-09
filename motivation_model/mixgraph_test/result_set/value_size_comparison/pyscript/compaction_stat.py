@@ -46,7 +46,7 @@ def get_row(dir_path):
     data_row = string_utils.pk_list_to_columns(primary_key_list)
     value_list = get_data_list(open_file(logfile))
     compaction_frequency = len(value_list[0])
-    
+
     data_row += str(compaction_frequency)+","
 
     # the last element is the l0 compaction count, no need for adding up
@@ -78,7 +78,7 @@ print("DB Loaded")
 # column_list = list(df.columns.values)[-6:]
 
 paint_df = pd.read_sql_query(
-    "SELECT * FROM "+TABLE_NAME_COMPACTION_ANALYSIS, db_conn)
+    "SELECT * FROM "+TABLE_NAME_COMPACTION_ANALYSIS + " where value_size != 'fixed_size' ", db_conn)
 
 # keyranges=[15,30,60,90]
 # paint_dfs = []
@@ -105,9 +105,10 @@ def paint_for_one_column(column_name, paint_df):
                  category_orders={
                      "media": ["SATASSD", "SATAHDD", "NVMeSSD", "PM"],
                      "cpu": [str(x)+"CPU" for x in [8, 16, 32]],
-                     "batch_size": [str(x)+"MB" for x in range(64, 128)]
+                     "batch_size": [str(x)+"MB" for x in range(64, 128)],
                      #  "media": sorted_media,
                      #  "media1_size":["1GB","5GB","10GB"]
+                     "value_size": ["mixed_size_"+str(x) + "_keyrange" for x in [15, 30, 60]]
                  },
                  labels={"media": "Storage Media",
                          "workload_size": "Estimate Input Size",
@@ -143,6 +144,7 @@ def paint_for_one_column(column_name, paint_df):
     print("plotting fig %s finished" % fig_name)
     fig.write_image(fig_name)
     fig.write_image(png_fig_name)
+
 
 for column in column_list:
     paint_for_one_column(column, paint_df)

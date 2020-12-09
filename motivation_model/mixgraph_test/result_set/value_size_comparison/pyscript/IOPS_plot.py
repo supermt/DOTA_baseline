@@ -58,7 +58,8 @@ def plot_single_graph(paint_df, IOPS_or_latency="IOPS"):
                  category_orders={
                      "media": ["SATASSD", "SATAHDD", "NVMeSSD", "PM"],
                      "cpu": [str(x)+"CPU" for x in [8, 16, 32]],
-                     "batch_size": [str(x)+"MB" for x in range(64, 128)]
+                     "batch_size": [str(x)+"MB" for x in range(64, 128)],
+                     "value_size": ["mixed_size_"+str(x) + "_keyrange" for x in [15, 30, 60]]
                      #  "media": sorted_media,
                      #  "media1_size":["1GB","5GB","10GB"]
                  },
@@ -117,7 +118,7 @@ if __name__ == "__main__":
     cursor = db_conn.cursor()
 
     paint_df = pd.read_sql_query(
-        "SELECT * FROM speed_results", db_conn)
+        "SELECT * FROM speed_results where value_size != 'fixed_size'", db_conn)
     plot_single_graph(paint_df)
     plot_single_graph(paint_df, "average_latency_ms")
 #     # plot_by_io_option("block_size")
