@@ -24,7 +24,7 @@ if __name__ == '__main__':
     parameter_dict = load_config_file('mixgraph.json')
     set_parameters_to_env(parameter_dict, env)
 
-    result_dir_prefix = "/home/supermt/mixgraph_60_keyrange_mixed_value_size"
+    result_dir_prefix = "/home/supermt/mixgraph_check_memtable_behavior/30_keyrange/85g14p01s/"
 
     # generate the keyrange of rows
     Key_distribution_config = {
@@ -32,7 +32,7 @@ if __name__ == '__main__':
         "keyrange_dist_b": -2.917,
         "keyrange_dist_c": 0.0164,
         "keyrange_dist_d": -0.08082,
-        "keyrange_num": 60
+        "keyrange_num": 30
     }
 
     # value_size distribution
@@ -48,9 +48,9 @@ if __name__ == '__main__':
 
     # operation
     operation_ratio_config = {
-        "mix_get_ratio": 0.1,
-        "mix_put_ratio": 1,
-        "mix_seek_ratio": 0.0
+        "mix_get_ratio": 0.85,
+        "mix_put_ratio": 0.14,
+        "mix_seek_ratio": 0.01
     }
 
     # ratio distribution
