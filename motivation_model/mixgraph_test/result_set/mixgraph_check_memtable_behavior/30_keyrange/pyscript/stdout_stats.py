@@ -7,16 +7,21 @@ import string_utils
 COLUMN_NUM = 3
 SPEED_TABLE_NAME = "speed_results"
 
-perf_keys = [
+perf_keys_single = [
     "get_from_memtable_count",
     "block_cache_hit_count",
     "block_cache_miss_count",
     "seek_on_memtable_count",
+]
+perf_keys_leveling = [
     "bloom_sst_hit_count",
     "bloom_sst_miss_count",
 ]
 
-perf_keys_ddl = ' '.join([x+" INT," for x in perf_keys])[:-1] 
+perf_keys_ddl = ' '.join([x+" INT," for x in perf_keys_single])[:-1]
+max_level = 3
+prefix="level"
+
 # [x+" INT," for x in perf_keys]
 
 
@@ -26,15 +31,15 @@ def create_data_table(conn):
     c.execute('''Drop Table if exists speed_results''')
     c.execute("CREATE TABLE %s (media TEXT, cpu TEXT, batch_size text," % SPEED_TABLE_NAME +
               "IOPS INT, average_latency_ms REAL," +
-              perf_keys_ddl+
-            #   "get_from_memtable_count INT," +
-            #   "block_cache_hit_count INT," +
-            #   "block_cache_miss_count INT," +
-            #   "seek_on_memtable_count INT," +
-            #   "bloom_sst_hit_count INT," +
-            #   "bloom_sst_miss_count INT," +
-            #   "block_cache_hit_count INT," +
-            #   "block_cache_miss_count INT" +
+              perf_keys_ddl +
+              #   "get_from_memtable_count INT," +
+              #   "block_cache_hit_count INT," +
+              #   "block_cache_miss_count INT," +
+              #   "seek_on_memtable_count INT," +
+              #   "bloom_sst_hit_count INT," +
+              #   "bloom_sst_miss_count INT," +
+              #   "block_cache_hit_count INT," +
+              #   "block_cache_miss_count INT" +
               ")")
     conn.commit()
 
@@ -50,8 +55,10 @@ def get_row(dir_path):
 
     data_row += str(iops) + "," + str(avg_latency)
     perf_dict = std_reader.get_perf_string_result(stdfile[0])
-    for perf_key in perf_keys:
-        print(perf_dict[perf_key])
+    print(perf_dict)
+    data_row_dml = ''.join([perf_dict[perf_key]+"," for perf_key in perf_keys])
+
+    print(data_row_dml)
 
     return data_row
 
