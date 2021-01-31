@@ -80,7 +80,7 @@ column_unit_dict = {
 
 
 def plot_one_file(data,column_name):
-    materials = ["PM", "PM_NOVA", "NVMeSSD"]
+    materials = ["PM", "NVMeSSD"]
     memtable_sizes = ['16', '32', '64', '128']
     cpu_cores = [2, 4, 8]
 

@@ -10,23 +10,11 @@ COLUMN_NUM = 4
 
 TABLE_NAME_COMPACTION_ANALYSIS = "compaction_analysis"
 
-
-# def pk_list_to_columns(primary_key_list):
-#     data_row = ""
-#     # print(primary_key_list[-4].split("_"))
-#     data_row += '%s,' % primary_key_list[-4].split("_")[1]
-
-#     data_row += '"%s",' % primary_key_list[-3].replace("StorageMaterial.", "")
-#     data_row += '"%s",' % primary_key_list[-2]
-#     data_row += '"%s",' % primary_key_list[-1]
-#     return data_row
-
-
 def create_data_table(conn):
     c = conn.cursor()
 
     c.execute("Drop Table if exists "+TABLE_NAME_COMPACTION_ANALYSIS)
-    c.execute("CREATE TABLE "+TABLE_NAME_COMPACTION_ANALYSIS+" (value_size text,media text, cpu text, batch_size text" +
+    c.execute("CREATE TABLE "+TABLE_NAME_COMPACTION_ANALYSIS+" (op_distribution text,media text, cpu text, batch_size text" +
               #   ",IOPS INT, average_latency_ms REAL" +
               ",compaction_frequency INT, overall_compaction_latency INT" +
               ",overall_compaction_cpu_latency INT" +
@@ -50,13 +38,18 @@ def get_row(dir_path):
     data_row += str(compaction_frequency)+","
 
     # the last element is the l0 compaction count, no need for adding up
-    for value in value_list[0:-1]:
+    for value in value_list[0:-3]:
         data_row += str(sum(value))+","
-    data_row += str(float(value_list[-1])/compaction_frequency)
+    data_row += str(round(float(value_list[-3])/compaction_frequency , 2))
+
+    print(dir_path)
+    zipped_list = zip(value_list[-2],value_list[-1])
+    repeat_ratio = [round(x[1]/x[0] ,2) for x in zipped_list]
+    print("repeat_ratio_list",repeat_ratio)
     return data_row
 
 
-dirs = get_log_dirs("../")
+dirs = get_log_dirs("../85g14p01s")
 
 
 db_conn = sqlite3.connect('speed_info.db')
@@ -78,7 +71,7 @@ print("DB Loaded")
 # column_list = list(df.columns.values)[-6:]
 
 paint_df = pd.read_sql_query(
-    "SELECT * FROM "+TABLE_NAME_COMPACTION_ANALYSIS + " where value_size != 'fixed_size' ", db_conn)
+    "SELECT * FROM "+TABLE_NAME_COMPACTION_ANALYSIS, db_conn)
 
 # keyranges=[15,30,60,90]
 # paint_dfs = []
@@ -99,7 +92,7 @@ def paint_for_one_column(column_name, paint_df):
     column_label = column_label.replace("overall", "cumulative")
     column_label = column_label.replace("latency", "latency (ms)")
 
-    fig = px.bar(paint_df, x="value_size", y=column_name, color="media", barmode="group",
+    fig = px.bar(paint_df, x="op_distribution", y=column_name, color="media", barmode="group",
                  facet_col="cpu",
                  facet_row="batch_size",
                  category_orders={

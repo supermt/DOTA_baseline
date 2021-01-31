@@ -1,4 +1,5 @@
 def get_iops_and_avg_latency(file_name):
+    print(file_name)
     iops = 0
     avg_latency = 0
     record_lines = open(file_name, "r").readlines()
@@ -32,7 +33,7 @@ def get_perf_string_result(file_name):
                 temp = slice_string[0:-1]
                 keys.pop()
                 for k_l_slice in temp:
-                    keys.append(last_key + "@" + k_l_slice.split("@")[1])
+                    keys.append(last_key + "_" + k_l_slice.split("@")[1])
                     values.append(k_l_slice.split("@")[0])
                 # values.append(''.join([x+"," for x in temp])[:-1])
                 keys.append(slice_string[-1])

@@ -4,7 +4,7 @@ import plotly.express as px
 from functools import cmp_to_key
 import string_utils
 
-COLUMN_NUM = 3
+COLUMN_NUM = 4
 SPEED_TABLE_NAME = "speed_results"
 
 
@@ -12,7 +12,7 @@ def create_data_table(conn):
     c = conn.cursor()
 
     c.execute('''Drop Table if exists speed_results''')
-    c.execute("CREATE TABLE %s (media TEXT, cpu TEXT, batch_size text," % SPEED_TABLE_NAME +
+    c.execute("CREATE TABLE %s (op_distribution TEXT,media TEXT, cpu TEXT, batch_size text," % SPEED_TABLE_NAME +
               "IOPS INT, average_latency_ms REAL" +
               # ",compaction_frequency INT, overall_compaction_latency INT" +
               # ",overall_compaction_cpu_latency INT"+
@@ -54,6 +54,7 @@ def plot_single_graph(paint_df, IOPS_or_latency="IOPS"):
 
     fig = px.bar(paint_df, x="cpu", y=IOPS_or_latency, color="media", barmode="group",
                  facet_row="batch_size",
+                 facet_col="op_distribution",
                  category_orders={
                      "media": ["SATASSD", "SATAHDD", "NVMeSSD", "PM"],
                      "cpu": [str(x)+"CPU" for x in [8, 16, 32]],

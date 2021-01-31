@@ -77,6 +77,15 @@ for mix_range in line_modes:
                 )
                 fig.update_yaxes(title_text="compaction score", range=[
                                  0, 18], row=row_id+1, col=column_id+1)
+
+    fig.update_layout(
+        title={
+            'text': "compaction scores in range num %s cases" % mix_range.split("_")[2],
+            'y': 1,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'}
+    )
     fig.update_layout(
         autosize=False,
         width=1600,
@@ -84,14 +93,15 @@ for mix_range in line_modes:
         font=dict(size=fontsize),
         # plot_bgcolor='white',
     )
-    fig.update_layout(legend=dict(
-        orientation="h",
-        yanchor="bottom",
-        y=1.1,
-        xanchor="left",
-        x=0.25,
-        font=dict(size=fontsize+4)
-    ))
+    # fig.update_layout(legend=dict(
+    #     orientation="h",
+    #     yanchor="bottom",
+    #     y=0,
+    #     xanchor="left",
+    #     x=0.25,
+    #     font=dict(size=fontsize+4)
+    # ))
+
     fig.update_yaxes(automargin=True)
     fig.update_xaxes(showgrid=False)
     fig.update_yaxes(automargin=True)

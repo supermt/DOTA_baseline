@@ -34,6 +34,8 @@ def get_data_list(log_file, need_score=False):
     compaction_output = []
     compaction_redundant = []
     l0_compaction = 0
+    flush_memtable_entry_count=[]
+    flush_sst_entry_count = []
     for line in log_file.readlines():
         line = str(line)
         line = re.search('(\{.+\})', line)
@@ -53,9 +55,14 @@ def get_data_list(log_file, need_score=False):
                     log_row['num_output_records'])
                 compaction_redundant.append(
                     log_row['num_input_records']-log_row['num_output_records'])
-            if log_row['event'] == 'flush_finished':
+            if log_row['event'] == 'flush_started':
+                flush_memtable_entry_count.append(log_row["num_entries"])
                 handle_flush_line(log_row)
-    return [compaction_latencies, compaction_cpu_latencies, compaction_input, compaction_output, compaction_redundant, l0_compaction]
+            if log_row['event'] == 'flush_finished':
+                flush_sst_entry_count.append(log_row["table_entry_count"])
+
+        
+    return [compaction_latencies, compaction_cpu_latencies, compaction_input, compaction_output, compaction_redundant, l0_compaction,flush_memtable_entry_count,flush_sst_entry_count]
 
 
 def get_compaction_score(log_file):
