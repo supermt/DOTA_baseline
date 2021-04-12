@@ -45,7 +45,6 @@ ori_parameter_list = {
     "num": DEFAULT_ENTRY_COUNT,
     "key_size": DEFAULT_KEY_SIZE,
     "value_size": DEFAULT_VALUE_SIZE,
-    "block_size": str(DEFAULT_BLOCK_SIZE),
     "write_buffer_size": DEFAULT_MEMTABLE_SIZE,  # Memtable Size, 256 M
     "target_file_size_base": str(DEFAULT_L1_SIZE),  # L1 FILE
     "min_write_buffer_number_to_merge": DEFAULT_IMMU_COMBIN,
