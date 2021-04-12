@@ -15,7 +15,21 @@ from db_bench_option import *
 from parameter_generator import HardwareEnvironment
 
 CGROUP_NAME = "test_group1"
+# flags: dRsuvr
+# lines: cpu, memory, stack, io, kernel, thread_pri
+PID_STAT_DATALINES = [1, 3, 5, 7, 9, 11]
 
+METRICS_MAP = {0: [0, 1, 4],  # %usr,%sys,%CPU
+               1: [0, 1, 2, 4],  # minflt/s, majflt/s, VSZ ,%MEM,
+               # (minor fault and major fault, major falut will
+               #  load a memory page from disk)
+               2: [],  # stack line is ignored
+               3: [0, 1, 2, 3],  # read, write,
+               # canceled write, iodelay
+               # canceled writes are caused by page fault
+               4: [],  # kernel table, ignored
+               5: []  # scheudling table, ignored}
+}
 
 def turn_on_cpu(id):
     # command = "echo 1 | sudo tee /sys/devices/system/cpu/cpu1/online"
@@ -32,8 +46,10 @@ def turn_off_cpu(id):
 def restrict_cpus(count, type=0):
     if type == 0:
         restrict_cpus_by_cgroup(count)
-    else:
+    elif type == 1:
         restrict_cpus_by_turning(count)
+    elif type == -1:
+        pass  # no restricting_cpus, only change the bg threads
 
 
 def restrict_cpus_by_cgroup(count):
@@ -77,9 +93,12 @@ def reset_CPUs():
     if CPU_RESTRICTING_TYPE == 1:
         for id in range(1, CPU_IN_TOTAL):
             turn_on_cpu(id)
-    else:
+    elif CPU_RESTRICTING_TYPE == 0:
         subprocess.run(
             ['cgset', '-r', 'cpu.cfs_quota_us=-1', CGROUP_NAME])
+    else:
+        print("CPU not restricted")
+        pass
     print("Reset all cpus")
 
 
@@ -137,7 +156,7 @@ def start_db_bench(db_bench_exec, db_path, options={}, cgroup={}, perf={}):
         db_bench_process = subprocess.Popen(
             bootstrap_list, stdout=out, stderr=err)
 
-        #db_bench_process = subprocess.Popen(db_bench_options, stdout=out, stderr=err)
+        # db_bench_process = subprocess.Popen(db_bench_options, stdout=out, stderr=err)
         print(parameter_printer(db_bench_options))
         # in case there are too many opened files
         os.system('echo %s|sudo -S %s' % (SUDO_PASSWD, "prlimit --pid " +
@@ -193,18 +212,17 @@ class DB_TASK:
         db_bench_process.wait(gap)
         print("mission complete")
 
-        if self.cpu_cores == CPU_IN_TOTAL:
+        if self.cpu_cores == CPU_IN_TOTAL or CPU_RESTRICTING_TYPE == -1:
             print("copying with system stat")
             copy_current_data(self.parameter_list["db"], self.result_dir, timer,
-                          ["stderr.txt", "stdout.txt", "LOG", "stat_result.csv","report.csv"])
+                              ["stderr.txt", "stdout.txt", "LOG", "stat_result.csv", "report.csv"])
         else:
             copy_current_data(self.parameter_list["db"], self.result_dir, timer,
-                          ["stderr.txt", "stdout.txt", "LOG","report.csv"])
-
+                              ["stderr.txt", "stdout.txt", "LOG", "report.csv"])
 
     def run_in_limited_cpu(self, gap=10):
         restrict_cpus(self.cpu_cores, CPU_RESTRICTING_TYPE)
-#        self.parameter_list["max_background_compactions"] = self.cpu_cores
+        self.parameter_list["max_background_compactions"] = self.cpu_cores
 
         try:
             timer = 0
@@ -223,36 +241,75 @@ class DB_TASK:
             self.error_handling(db_bench_process, timer, e)
         return
 
-    def record_system_stat(self, timer, db_paths, gap, db_bench_process, devices, stat_recorder):
-        result_line = [timer]
-        for db_path in db_paths:
-            du_line = os.popen("du -s %s" % db_path).read()
-            du_result = du_line.split()[0]
-            if not du_result.isnumeric():
-                return
-            result_line.append(db_path)
-            result_line.append(int(du_result))
+    def add_header_pidstat(self,stat_recorder):
+        stat_recorder.write(
+            "timestamp,usr,sys,CPU_utils,minflt,majflt,VSZ,MEM_utils,read_kb,write_kb,ccwr_kb,iodelay\n"
+        )
+    def record_pidstat(self, timer, db_bench_process, stat_recorder):
+        result_line = []
+        command_return = os.popen("pidstat -p %d -dRsuvr 1 1 -H" %  # 1 log per sec
+                                  db_bench_process.pid).read().splitlines()
+        # 03:47:17 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
 
-        if len(db_paths) == 0:
-            db_path = self.parameter_list["db"]
-            du_line = os.popen("du -s %s/" % db_path).read()
-            # print(du_line)
-            du_result = du_line.split()[0]
-            if not du_result.isnumeric():
-                return
-            
-            result_line.append(db_path)
-            result_line.append(int(du_result))
+        # 03:47:17 PM   UID       PID  minflt/s  majflt/s     VSZ     RSS   %MEM  Command
+
+        # 03:47:17 PM   UID       PID StkSize  StkRef  Command
+
+        # 03:47:17 PM   UID       PID   kB_rd/s   kB_wr/s kB_ccwr/s iodelay  Command
+
+        # 03:47:17 PM   UID       PID threads   fd-nr  Command
+
+        # 03:47:17 PM   UID       PID prio policy  Command
+
+        # remove empty lines
+        useful_lines = [x for x in command_return[1:] if x]
+        # remove column name lines
+        data_lines = [useful_lines[x] for x in PID_STAT_DATALINES]
+        result_line.append(data_lines[1].split(" ")[0]) 
+
+        for i in range(len(data_lines)):
+            # split the entry according to the spaces
+            line_entries = data_lines[i].split(" ")
+            # remove empty strings, and remove the Time, UID and PID
+            line_entries = [x for x in line_entries if x][3:]
+            for metrics in METRICS_MAP[i]:
+                entry= line_entries[metrics]
+                result_line.append(entry)
+        stat_recorder.write(str(result_line)[1:-1]+"\n")
+        return
+
+    def record_system_stat(self, timer, db_paths, gap, db_bench_process, devices, stat_recorder):
+        Warning.warn(
+            "out-of-date function, use the pidstat that may give out all we need", DeprecationWarning)
+        result_line = [timer]
+        # for db_path in db_paths:
+        #     du_line = os.popen("du -s %s" % db_path).read()
+        #     du_result = du_line.split()[0]
+        #     if not du_result.isnumeric():
+        #         return
+        #     result_line.append(db_path)
+        #     result_line.append(int(du_result))
+
+        # if len(db_paths) == 0:
+        #     db_path = self.parameter_list["db"]
+        #     du_line = os.popen("du -s %s/" % db_path).read()
+        #     # print(du_line)
+        #     du_result = du_line.split()[0]
+        #     if not du_result.isnumeric():
+        #         return
+
+        #     result_line.append(db_path)
+        #     result_line.append(int(du_result))
 
         top_lines = os.popen("top -d %d -b -n 1 -p %d" %
                              (gap, db_bench_process.pid)).read().splitlines()
         cpu_util = float(top_lines[-1].split()[-4])
         result_line.append(cpu_util)
-        io_counter_dict = psutil.disk_io_counters(perdisk=True)
-        for device in devices:
-            result_line.append(device),
-            result_line.append(io_counter_dict[device].read_bytes),
-            result_line.append(io_counter_dict[device].write_bytes)
+        # io_counter_dict = psutil.disk_io_counters(perdisk=True)
+        # for device in devices:
+        #     result_line.append(device),
+        #     result_line.append(io_counter_dict[device].read_bytes),
+        #     result_line.append(io_counter_dict[device].write_bytes)
         result_line = str(result_line)[1:-1]
         stat_recorder.write(result_line+"\n")
         return
@@ -279,26 +336,27 @@ class DB_TASK:
                 self.db_bench, self.parameter_list["db"], self.parameter_list)
             stat_recorder = open(
                 self.parameter_list["db"]+"/stat_result.csv", "w")
-
+            # add the header line
+            self.add_header_pidstat(stat_recorder)
             print("Mission started, output is in:%s" % self.result_dir)
             # create_target_dir(self.result_dir)
             while True:
                 try:
+                    stat_recorder.flush()
                     self.copy_result_files(db_bench_process, gap, timer)
                     break
                 except subprocess.TimeoutExpired:
                     timer = timer + gap
-                    # time, dbpath1,size,dbpath2,size, cpu_util,device1,iostat1...
-                    self.record_system_stat(
-                        timer, db_paths, gap, db_bench_process, devices, stat_recorder)
+                    self.record_pidstat(
+                        timer, db_bench_process, stat_recorder)
                     pass
         except Exception as e:
-            self.error_handling(db_bench_process,timer,e)
+            self.error_handling(db_bench_process, timer, e)
         # reset_CPUs()
         return
 
-    def run(self, gap=10, force_record=False):
-        if self.cpu_cores == CPU_IN_TOTAL or force_record == True:
+    def run(self, gap=1, force_record=False):
+        if self.cpu_cores == CPU_IN_TOTAL or force_record == True or CPU_RESTRICTING_TYPE == -1:
             self.run_in_full_cpu(gap)
         else:
             self.run_in_limited_cpu(1)
@@ -334,7 +392,7 @@ class DB_launcher:
             temp_para_dict["db"] = str(material[0])
             for cpu_count in env.get_current_CPU_experiment_set():
                 result_dir = material_dir + "/" + str(cpu_count) + "CPU"
-#                temp_para_dict["max_background_compactions"] = str(cpu_count)
+                temp_para_dict["max_background_compactions"] = str(cpu_count)
                 for memory_budget in env.get_current_memory_experiment_set():
                     temp_para_dict["write_buffer_size"] = memory_budget
                     target_dir = result_dir + "/" + \
