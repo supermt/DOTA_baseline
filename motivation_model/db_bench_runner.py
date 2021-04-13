@@ -29,7 +29,8 @@ METRICS_MAP = {0: [0, 1, 4],  # %usr,%sys,%CPU
                # canceled writes are caused by page fault
                4: [],  # kernel table, ignored
                5: []  # scheudling table, ignored}
-}
+               }
+
 
 def turn_on_cpu(id):
     # command = "echo 1 | sudo tee /sys/devices/system/cpu/cpu1/online"
@@ -241,11 +242,52 @@ class DB_TASK:
             self.error_handling(db_bench_process, timer, e)
         return
 
-    def add_header_pidstat(self,stat_recorder):
+    def add_header_psutil(self, stat_recorder):
+        stat_recorder.write("secs,"
+                            + "user_cpu,sys_cpu,io_wait,cpu_percent,cpu_num,"
+                            + "rss,vms,dirty,"
+                            + "read_count,write_count,disk_read_bytes,disk_write_bytes,syscall_read_bytes,syscall_write_bytes,"
+                            + "num_threads"
+                            + "\n")
+
+    def record_psutils(self, timer, p, stat_recorder, gap):
+        result_line = []
+        result_line.append(timer)
+        with p.oneshot():
+            # cpu info
+            cpu_info = p.cpu_times()._asdict()
+            result_line.append(cpu_info["user"])
+            result_line.append(cpu_info["system"])
+            result_line.append(cpu_info["iowait"])
+            result_line.append(float(p.cpu_percent(interval=None))/gap)
+            result_line.append(int(p.cpu_num()))
+            # mem info
+            mem_info = p.memory_info()._asdict()
+            result_line.append(mem_info["rss"])
+            result_line.append(mem_info["vms"])
+            result_line.append(mem_info["dirty"])
+            # io_counter
+            io_counter = p.io_counters()._asdict()
+            result_line.append(io_counter["read_count"])
+            result_line.append(io_counter["write_count"])
+            result_line.append(io_counter["read_bytes"])
+            result_line.append(io_counter["write_bytes"])
+            result_line.append(io_counter["read_chars"])
+            result_line.append(io_counter["write_chars"])
+            # thread_stats
+            result_line.append(p.num_threads())
+        # print(result_line)
+        stat_recorder.write(str(result_line)[1:-1]+"\n")
+        return
+
+    def add_header_pidstat(self, stat_recorder):
         stat_recorder.write(
             "timestamp,usr,sys,CPU_utils,minflt,majflt,VSZ,MEM_utils,read_kb,write_kb,ccwr_kb,iodelay\n"
         )
+
     def record_pidstat(self, timer, db_bench_process, stat_recorder):
+        Warning.warn(
+            "pidstat can't record many useful information, change it into psutil")
         result_line = []
         command_return = os.popen("pidstat -p %d -dRsuvr 1 1 -H" %  # 1 log per sec
                                   db_bench_process.pid).read().splitlines()
@@ -265,7 +307,7 @@ class DB_TASK:
         useful_lines = [x for x in command_return[1:] if x]
         # remove column name lines
         data_lines = [useful_lines[x] for x in PID_STAT_DATALINES]
-        result_line.append(data_lines[1].split(" ")[0]) 
+        result_line.append(data_lines[1].split(" ")[0])
 
         for i in range(len(data_lines)):
             # split the entry according to the spaces
@@ -273,7 +315,7 @@ class DB_TASK:
             # remove empty strings, and remove the Time, UID and PID
             line_entries = [x for x in line_entries if x][3:]
             for metrics in METRICS_MAP[i]:
-                entry= line_entries[metrics]
+                entry = line_entries[metrics]
                 result_line.append(entry)
         stat_recorder.write(str(result_line)[1:-1]+"\n")
         return
@@ -337,7 +379,15 @@ class DB_TASK:
             stat_recorder = open(
                 self.parameter_list["db"]+"/stat_result.csv", "w")
             # add the header line
-            self.add_header_pidstat(stat_recorder)
+            stat_recorder.write("secs,"
+                                + "user_cpu,sys_cpu,io_wait,cpu_percent,cpu_num,"
+                                + "rss,vms,dirty,"
+                                + "read_count,write_count,disk_read_bytes,disk_write_bytes,syscall_read_bytes,syscall_write_bytes,"
+                                + "num_threads"
+                                + "\n")
+
+            psutil_db_bench = psutil.Process(db_bench_process.pid)
+
             print("Mission started, output is in:%s" % self.result_dir)
             # create_target_dir(self.result_dir)
             while True:
@@ -347,8 +397,8 @@ class DB_TASK:
                     break
                 except subprocess.TimeoutExpired:
                     timer = timer + gap
-                    self.record_pidstat(
-                        timer, db_bench_process, stat_recorder)
+                    self.record_psutils(
+                        timer, psutil_db_bench, stat_recorder, gap)
                     pass
         except Exception as e:
             self.error_handling(db_bench_process, timer, e)
@@ -356,6 +406,9 @@ class DB_TASK:
         return
 
     def run(self, gap=1, force_record=False):
+        # clear the cache, or the read bytes will be influenced to be 0 in most cases.
+        print("clear the memory cache since all input is the same")
+        os.system("sync; echo 1 > /proc/sys/vm/drop_caches")
         if self.cpu_cores == CPU_IN_TOTAL or force_record == True or CPU_RESTRICTING_TYPE == -1:
             self.run_in_full_cpu(gap)
         else:
