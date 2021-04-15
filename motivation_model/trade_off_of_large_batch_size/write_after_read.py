@@ -21,17 +21,16 @@ if __name__ == '__main__':
     parameter_dict = load_config_file('config.json')
     set_parameters_to_env(parameter_dict, env)
 
-    result_dir = "/home/jinghuan/trade_off_analysis"
+    result_dir = "/home/supermt/trade_off_analysis"
 
     runner = DB_launcher(
         env, result_dir, db_bench=DEFAULT_DB_BENCH, extend_options={
-            "num":"26843545",
+            "num":"268435456", # 20GB
             "report_interval_seconds": 1,
             "mutable_compaction_thread_prior": "false",
-            "duration": 3600,
             "benchmarks":"fillrandom,readrandom,stats",
             "statistics":"true",
-            "reads":"100000"
+            "reads":"10000000",# 10M read,around 600 sec
 	    # "record_level_files": "true",
             # "change_points": "[{target_file_size_base,134217728,600},{write_buffer_size,134217728,600}]",
             #"DOTA_enabled":"true",
