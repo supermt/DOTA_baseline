@@ -7,15 +7,11 @@
     ],
     "storage_paths": [
         {
-            "path": "/home/jinghuan/rocksdb_hdd",
+            "path": "/home/supermt/rocksdb_hdd",
             "media_type": "SATAHDD"
         },
         {
-            "path": "/home/jinghuan/rocksdb_ssd",
-            "media_type": "SATASSD"
-        },
-        {
-            "path": "/home/jinghuan/rocksdb_nvme",
+            "path": "/home/supermt/rocksdb_nvme",
             "media_type": "NVMeSSD"
         }
     ],
