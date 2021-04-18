@@ -19,11 +19,9 @@
             "media_type": "NVMeSSD"
         }
     ],
-    "io_options": {
-        "benchmark_write_rate_limit": [
-            30000000,
-            15000000,
-            5000000
-        ]
-    }
+    "benchmark_write_rate_limit": [
+        30000000,
+        15000000,
+        5000000
+    ]
 }
