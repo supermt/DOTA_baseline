@@ -90,18 +90,21 @@ def restrict_cpus_by_turning(count):
         print("finished")
 
 
-def reset_CPUs():
-    if CPU_RESTRICTING_TYPE == 1:
+def reset_CPUs(out_control=False,limit_type=1):
+    
+    if not out_control:
+        limit_type = CPU_RESTRICTING_TYPE
+
+    if limit_type == 1:
         for id in range(1, CPU_IN_TOTAL):
             turn_on_cpu(id)
-    elif CPU_RESTRICTING_TYPE == 0:
+    elif limit_type == 0:
         subprocess.run(
             ['cgset', '-r', 'cpu.cfs_quota_us=-1', CGROUP_NAME])
     else:
         print("CPU not restricted")
         pass
     print("Reset all cpus")
-
 
 def create_db_path(db_path):
     try:
