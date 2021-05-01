@@ -58,6 +58,7 @@ ori_parameter_list = {
     "base_background_compactions": 1,
     "report_bg_io_stats": False,
     "subcompactions": 1,  # How many subcompactions will be applied to L0 Compaction
+    "detailed_running_stats":True
 }
 
 

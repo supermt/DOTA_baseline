@@ -19,7 +19,7 @@ CGROUP_NAME = "test_group1"
 # lines: cpu, memory, stack, io, kernel, thread_pri
 PID_STAT_DATALINES = [1, 3, 5, 7, 9, 11]
 
-METRICS_MAP = {0: [0, 1, 4],  # %usr,%sys,%CPU
+METRICS_MAP = {0: [0, 1, 3, 4],  # %usr,%sys,%CPU
                1: [0, 1, 2, 4],  # minflt/s, majflt/s, VSZ ,%MEM,
                # (minor fault and major fault, major falut will
                #  load a memory page from disk)
@@ -285,7 +285,7 @@ class DB_TASK:
 
     def add_header_pidstat(self, stat_recorder):
         stat_recorder.write(
-            "timestamp,usr,sys,CPU_utils,minflt,majflt,VSZ,MEM_utils,read_kb,write_kb,ccwr_kb,iodelay\n"
+            "timestamp,usr,sys,wait,CPU_utils,minflt,majflt,VSZ,MEM_utils,read_kb,write_kb,ccwr_kb,iodelay\n"
         )
 
     def record_pidstat(self, timer, db_bench_process, stat_recorder):
