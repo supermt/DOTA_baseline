@@ -1,0 +1,14 @@
+{
+    "cpu_set": [
+	12
+    ],
+    "memtable_size_set": [
+        "64*1024*1024"
+    ],
+    "storage_paths": [
+        {
+            "path": "/home/supermt/rocksdb_nvme",
+            "media_type": "NVMeSSD"
+        }
+    ]
+}
