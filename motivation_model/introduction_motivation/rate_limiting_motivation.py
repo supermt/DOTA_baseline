@@ -21,7 +21,7 @@ if __name__ == '__main__':
     parameter_dict = load_config_file('config.json')
     set_parameters_to_env(parameter_dict, env)
 
-    result_dir = "/home/supermt/introduction_motivation/"
+    result_dir = "/home/supermt/introduction_motivation_2400/"
     write_in_rates = parameter_dict["benchmark_write_rate_limit"]
 
     for write_in_rate in write_in_rates:    
@@ -30,7 +30,7 @@ if __name__ == '__main__':
         runner = DB_launcher(
             env, target_result_dir, db_bench=DEFAULT_DB_BENCH, extend_options={
                 "report_interval_seconds": 1,
-                "duration": 1200,
+                "duration": 2400,
                 "benchmarks":"fillrandom,stats",
                 "statistics":"true",
                 "benchmark_write_rate_limit":write_in_rate
