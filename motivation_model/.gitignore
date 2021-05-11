@@ -9,4 +9,6 @@ motivation_bootstrap.py
 **/**.journal*
 **/.vscode
 **/nohup.out
-
+**/*.data-folded
+**/*.perf-folded
+**/*.data
