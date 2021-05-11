@@ -8,3 +8,5 @@ motivation_bootstrap.py
 **/**.db
 **/**.journal*
 **/.vscode
+**/nohup.out
+
