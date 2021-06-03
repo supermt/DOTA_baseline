@@ -1,0 +1,4128 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="1110" onload="init(evt)" viewBox="0 0 1200 1110" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#e0e0ff" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+	}
+
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom();
+			zoom(target);
+		}
+		else if (e.target.id == "unzoom") unzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+	}, false)
+
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+		return;
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x = txt.length - 2; x > 0; x--) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom() {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+		search();
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) {
+				currentSearchTerm = term;
+				search();
+			}
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (currentSearchTerm === null) return;
+		var term = currentSearchTerm;
+
+		var re = new RegExp(term, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="1110.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >Off-CPU Time Flame Graph 8 thread(s) nvme</text>
+<text id="details" x="10.00" y="1093" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="1093" > </text>
+<g id="frames">
+<g >
+<title>jbd2_log_wait_commit (5,759,936 us, 0.06%)</title><rect x="781.5" y="725" width="0.7" height="15.0" fill="rgb(111,111,230)" rx="2" ry="2" />
+<text  x="784.53" y="735.5" ></text>
+</g>
+<g >
+<title>__wake_up_common_lock (2,198,241 us, 0.02%)</title><rect x="345.7" y="597" width="0.2" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="348.66" y="607.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (3,937,884 us, 0.04%)</title><rect x="655.0" y="437" width="0.5" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="657.99" y="447.5" ></text>
+</g>
+<g >
+<title>wake_page_function (3,937,884 us, 0.04%)</title><rect x="655.0" y="629" width="0.5" height="15.0" fill="rgb(70,184,184)" rx="2" ry="2" />
+<text  x="657.99" y="639.5" ></text>
+</g>
+<g >
+<title>bio_endio (4,029,959 us, 0.04%)</title><rect x="417.9" y="517" width="0.5" height="15.0" fill="rgb(57,172,172)" rx="2" ry="2" />
+<text  x="420.93" y="527.5" ></text>
+</g>
+<g >
+<title>do_idle (1,379,978 us, 0.01%)</title><rect x="1116.1" y="213" width="0.1" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="1119.08" y="223.5" ></text>
+</g>
+<g >
+<title>ext4_finish_bio (4,029,959 us, 0.04%)</title><rect x="417.9" y="549" width="0.5" height="15.0" fill="rgb(71,184,184)" rx="2" ry="2" />
+<text  x="420.93" y="559.5" ></text>
+</g>
+<g >
+<title>apic_timer_interrupt (869,791,475 us, 9.08%)</title><rect x="10.1" y="821" width="107.2" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="13.14" y="831.5" >apic_timer_in..</text>
+</g>
+<g >
+<title>sys_futex (583,703,258 us, 6.10%)</title><rect x="345.9" y="837" width="72.0" height="15.0" fill="rgb(97,208,208)" rx="2" ry="2" />
+<text  x="348.93" y="847.5" >sys_futex</text>
+</g>
+<g >
+<title>[unknown] (11,093,312 us, 0.12%)</title><rect x="1116.1" y="885" width="1.3" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="1119.08" y="895.5" ></text>
+</g>
+<g >
+<title>-- (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="885" width="135.4" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="422.28" y="895.5" >--</text>
+</g>
+<g >
+<title> (1,900,753 us, 0.02%)</title><rect x="982.2" y="149" width="0.3" height="15.0" fill="rgb(69,183,183)" rx="2" ry="2" />
+<text  x="985.23" y="159.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (8,160,088 us, 0.09%)</title><rect x="982.5" y="661" width="1.0" height="15.0" fill="rgb(56,171,171)" rx="2" ry="2" />
+<text  x="985.46" y="671.5" ></text>
+</g>
+<g >
+<title>sys_futex (1,074,850,242 us, 11.23%)</title><rect x="983.5" y="965" width="132.5" height="15.0" fill="rgb(137,137,253)" rx="2" ry="2" />
+<text  x="986.53" y="975.5" >sys_futex</text>
+</g>
+<g >
+<title>__wake_up_locked_key_bookmark (1,900,842 us, 0.02%)</title><rect x="982.2" y="597" width="0.3" height="15.0" fill="rgb(63,177,177)" rx="2" ry="2" />
+<text  x="985.23" y="607.5" ></text>
+</g>
+<g >
+<title>sys_futex (1,074,850,233 us, 11.23%)</title><rect x="983.5" y="837" width="132.5" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="986.53" y="847.5" >sys_futex</text>
+</g>
+<g >
+<title>futex_wait_queue_me (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="917" width="135.4" height="15.0" fill="rgb(137,137,252)" rx="2" ry="2" />
+<text  x="422.28" y="927.5" >futex_wait_queue_me</text>
+</g>
+<g >
+<title> (583,703,258 us, 6.10%)</title><rect x="345.9" y="789" width="72.0" height="15.0" fill="rgb(51,166,166)" rx="2" ry="2" />
+<text  x="348.93" y="799.5" ></text>
+</g>
+<g >
+<title>rocksdb:low1 (1,108,552,838 us, 11.58%)</title><rect x="419.3" y="1045" width="136.6" height="15.0" fill="rgb(101,101,222)" rx="2" ry="2" />
+<text  x="422.28" y="1055.5" >rocksdb:low1</text>
+</g>
+<g >
+<title>bio_endio (3,304,210 us, 0.03%)</title><rect x="781.1" y="517" width="0.4" height="15.0" fill="rgb(64,178,178)" rx="2" ry="2" />
+<text  x="784.11" y="527.5" ></text>
+</g>
+<g >
+<title>futex_wait (667,286,698 us, 6.97%)</title><rect x="899.9" y="933" width="82.3" height="15.0" fill="rgb(116,116,235)" rx="2" ry="2" />
+<text  x="902.92" y="943.5" >futex_wait</text>
+</g>
+<g >
+<title>do_syscall_64 (667,286,698 us, 6.97%)</title><rect x="899.9" y="821" width="82.3" height="15.0" fill="rgb(101,211,211)" rx="2" ry="2" />
+<text  x="902.92" y="831.5" >do_syscal..</text>
+</g>
+<g >
+<title>futex_wait (1,074,850,242 us, 11.23%)</title><rect x="983.5" y="933" width="132.5" height="15.0" fill="rgb(121,121,239)" rx="2" ry="2" />
+<text  x="986.53" y="943.5" >futex_wait</text>
+</g>
+<g >
+<title>ret_from_fork (6,291,311 us, 0.07%)</title><rect x="555.1" y="565" width="0.8" height="15.0" fill="rgb(98,209,209)" rx="2" ry="2" />
+<text  x="558.08" y="575.5" ></text>
+</g>
+<g >
+<title>wake_page_function (1,850,852 us, 0.02%)</title><rect x="1188.7" y="629" width="0.3" height="15.0" fill="rgb(85,197,197)" rx="2" ry="2" />
+<text  x="1191.72" y="639.5" ></text>
+</g>
+<g >
+<title>rocksdb:low2 (185,221,929 us, 1.93%)</title><rect x="366.9" y="773" width="22.9" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="369.93" y="783.5" >r..</text>
+</g>
+<g >
+<title>db_bench (1,839,468,091 us, 19.21%)</title><rect x="117.4" y="773" width="226.7" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="120.37" y="783.5" >db_bench</text>
+</g>
+<g >
+<title>[unknown] (11,641,330 us, 0.12%)</title><rect x="1116.0" y="1013" width="1.4" height="15.0" fill="rgb(136,136,252)" rx="2" ry="2" />
+<text  x="1119.01" y="1023.5" ></text>
+</g>
+<g >
+<title>handle_irq (3,304,210 us, 0.03%)</title><rect x="781.1" y="309" width="0.4" height="15.0" fill="rgb(84,196,196)" rx="2" ry="2" />
+<text  x="784.11" y="319.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,074,850,233 us, 11.23%)</title><rect x="983.5" y="805" width="132.5" height="15.0" fill="rgb(77,190,190)" rx="2" ry="2" />
+<text  x="986.53" y="815.5" >entry_SYSCALL_64..</text>
+</g>
+<g >
+<title>handle_irq (4,029,959 us, 0.04%)</title><rect x="417.9" y="309" width="0.5" height="15.0" fill="rgb(66,180,180)" rx="2" ry="2" />
+<text  x="420.93" y="319.5" ></text>
+</g>
+<g >
+<title>bio_endio (1,037,769 us, 0.01%)</title><rect x="10.0" y="533" width="0.1" height="15.0" fill="rgb(52,167,167)" rx="2" ry="2" />
+<text  x="13.00" y="543.5" ></text>
+</g>
+<g >
+<title>nvme_irq (1,850,852 us, 0.02%)</title><rect x="1188.7" y="389" width="0.3" height="15.0" fill="rgb(52,166,166)" rx="2" ry="2" />
+<text  x="1191.72" y="399.5" ></text>
+</g>
+<g >
+<title>wait_on_page_bit_common (2,372,032 us, 0.02%)</title><rect x="344.4" y="693" width="0.3" height="15.0" fill="rgb(97,97,219)" rx="2" ry="2" />
+<text  x="347.39" y="703.5" ></text>
+</g>
+<g >
+<title>unlock_buffer (1,037,769 us, 0.01%)</title><rect x="10.0" y="581" width="0.1" height="15.0" fill="rgb(84,196,196)" rx="2" ry="2" />
+<text  x="13.00" y="591.5" ></text>
+</g>
+<g >
+<title>nvme_process_cq (3,304,210 us, 0.03%)</title><rect x="781.1" y="405" width="0.4" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="784.11" y="415.5" ></text>
+</g>
+<g >
+<title>do_idle (1,850,666 us, 0.02%)</title><rect x="1188.7" y="213" width="0.3" height="15.0" fill="rgb(99,210,210)" rx="2" ry="2" />
+<text  x="1191.72" y="223.5" ></text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (3,937,884 us, 0.04%)</title><rect x="655.0" y="373" width="0.5" height="15.0" fill="rgb(84,196,196)" rx="2" ry="2" />
+<text  x="657.99" y="383.5" ></text>
+</g>
+<g >
+<title>sys_futex (577,809,533 us, 6.04%)</title><rect x="1117.4" y="837" width="71.3" height="15.0" fill="rgb(72,185,185)" rx="2" ry="2" />
+<text  x="1120.45" y="847.5" >sys_futex</text>
+</g>
+<g >
+<title>swapper/15 (18,296,302 us, 0.19%)</title><rect x="11.0" y="677" width="2.2" height="15.0" fill="rgb(58,172,172)" rx="2" ry="2" />
+<text  x="13.97" y="687.5" ></text>
+</g>
+<g >
+<title>futex_wait_queue_me (954,444,856 us, 9.97%)</title><rect x="782.3" y="917" width="117.6" height="15.0" fill="rgb(126,126,243)" rx="2" ry="2" />
+<text  x="785.29" y="927.5" >futex_wait_que..</text>
+</g>
+<g >
+<title> (6,291,311 us, 0.07%)</title><rect x="555.1" y="549" width="0.8" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="558.08" y="559.5" ></text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (7,176,391 us, 0.07%)</title><rect x="655.5" y="533" width="0.9" height="15.0" fill="rgb(63,177,177)" rx="2" ry="2" />
+<text  x="658.50" y="543.5" ></text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (3,304,210 us, 0.03%)</title><rect x="781.1" y="373" width="0.4" height="15.0" fill="rgb(56,170,170)" rx="2" ry="2" />
+<text  x="784.11" y="383.5" ></text>
+</g>
+<g >
+<title>jbd2_complete_transaction (2,198,241 us, 0.02%)</title><rect x="345.7" y="693" width="0.2" height="15.0" fill="rgb(137,137,253)" rx="2" ry="2" />
+<text  x="348.66" y="703.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (9,158,102 us, 0.10%)</title><rect x="1116.2" y="725" width="1.2" height="15.0" fill="rgb(132,132,248)" rx="2" ry="2" />
+<text  x="1119.25" y="735.5" ></text>
+</g>
+<g >
+<title>sys_fsync (2,424,459 us, 0.03%)</title><rect x="344.1" y="837" width="0.3" height="15.0" fill="rgb(137,137,253)" rx="2" ry="2" />
+<text  x="347.08" y="847.5" ></text>
+</g>
+<g >
+<title>rocksdb:low5 (105,289,189 us, 1.10%)</title><rect x="850.9" y="773" width="13.0" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="853.93" y="783.5" ></text>
+</g>
+<g >
+<title>sys_futex (1,839,468,120 us, 19.21%)</title><rect x="117.4" y="965" width="226.7" height="15.0" fill="rgb(122,122,240)" rx="2" ry="2" />
+<text  x="120.37" y="975.5" >sys_futex</text>
+</g>
+<g >
+<title>sys_fdatasync (10,325,678 us, 0.11%)</title><rect x="344.4" y="789" width="1.3" height="15.0" fill="rgb(107,107,228)" rx="2" ry="2" />
+<text  x="347.39" y="799.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,074,850,269 us, 11.23%)</title><rect x="983.5" y="997" width="132.5" height="15.0" fill="rgb(138,138,253)" rx="2" ry="2" />
+<text  x="986.53" y="1007.5" >entry_SYSCALL_64..</text>
+</g>
+<g >
+<title>futex_wait_queue_me (869,862,728 us, 9.09%)</title><rect x="10.1" y="933" width="107.2" height="15.0" fill="rgb(105,105,225)" rx="2" ry="2" />
+<text  x="13.13" y="943.5" >futex_wait_qu..</text>
+</g>
+<g >
+<title>do_fsync (2,424,459 us, 0.03%)</title><rect x="344.1" y="821" width="0.3" height="15.0" fill="rgb(114,114,233)" rx="2" ry="2" />
+<text  x="347.08" y="831.5" ></text>
+</g>
+<g >
+<title>handle_irq_event (2,372,031 us, 0.02%)</title><rect x="344.4" y="325" width="0.3" height="15.0" fill="rgb(80,193,193)" rx="2" ry="2" />
+<text  x="347.39" y="335.5" ></text>
+</g>
+<g >
+<title>end_page_writeback (1,850,852 us, 0.02%)</title><rect x="1188.7" y="565" width="0.3" height="15.0" fill="rgb(109,219,219)" rx="2" ry="2" />
+<text  x="1191.72" y="575.5" ></text>
+</g>
+<g >
+<title>ext4_end_bio (1,900,842 us, 0.02%)</title><rect x="982.2" y="533" width="0.3" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="985.23" y="543.5" ></text>
+</g>
+<g >
+<title>futex_wake (1,839,468,091 us, 19.21%)</title><rect x="117.4" y="869" width="226.7" height="15.0" fill="rgb(77,190,190)" rx="2" ry="2" />
+<text  x="120.37" y="879.5" >futex_wake</text>
+</g>
+<g >
+<title>[unknown] (10,943,829 us, 0.11%)</title><rect x="417.9" y="917" width="1.4" height="15.0" fill="rgb(134,134,250)" rx="2" ry="2" />
+<text  x="420.93" y="927.5" ></text>
+</g>
+<g >
+<title>ret_from_intr (1,380,274 us, 0.01%)</title><rect x="1116.1" y="277" width="0.1" height="15.0" fill="rgb(101,211,211)" rx="2" ry="2" />
+<text  x="1119.08" y="287.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (10,325,678 us, 0.11%)</title><rect x="344.4" y="741" width="1.3" height="15.0" fill="rgb(96,96,218)" rx="2" ry="2" />
+<text  x="347.39" y="751.5" ></text>
+</g>
+<g >
+<title>kjournald2 (6,377,330 us, 0.07%)</title><rect x="418.4" y="597" width="0.8" height="15.0" fill="rgb(106,217,217)" rx="2" ry="2" />
+<text  x="421.44" y="607.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (869,791,475 us, 9.08%)</title><rect x="10.1" y="709" width="107.2" height="15.0" fill="rgb(80,193,193)" rx="2" ry="2" />
+<text  x="13.14" y="719.5" >secondary_sta..</text>
+</g>
+<g >
+<title>rocksdb:low7 (256,305,534 us, 2.68%)</title><rect x="623.3" y="773" width="31.6" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="626.35" y="783.5" >ro..</text>
+</g>
+<g >
+<title> (803,484,405 us, 8.39%)</title><rect x="555.9" y="1013" width="99.0" height="15.0" fill="rgb(93,93,215)" rx="2" ry="2" />
+<text  x="558.91" y="1023.5" ></text>
+</g>
+<g >
+<title> (1,098,715,375 us, 11.48%)</title><rect x="419.3" y="1013" width="135.4" height="15.0" fill="rgb(99,99,221)" rx="2" ry="2" />
+<text  x="422.28" y="1023.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (6,357,641 us, 0.07%)</title><rect x="344.9" y="709" width="0.8" height="15.0" fill="rgb(121,121,239)" rx="2" ry="2" />
+<text  x="347.88" y="719.5" ></text>
+</g>
+<g >
+<title>rocksdb:low7 (588,702,633 us, 6.15%)</title><rect x="1117.4" y="1045" width="72.6" height="15.0" fill="rgb(100,100,222)" rx="2" ry="2" />
+<text  x="1120.44" y="1055.5" >rocksdb:..</text>
+</g>
+<g >
+<title>schedule (2,372,032 us, 0.02%)</title><rect x="344.4" y="661" width="0.3" height="15.0" fill="rgb(121,121,239)" rx="2" ry="2" />
+<text  x="347.39" y="671.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter (1,160,398 us, 0.01%)</title><rect x="344.7" y="133" width="0.2" height="15.0" fill="rgb(89,200,200)" rx="2" ry="2" />
+<text  x="347.73" y="143.5" ></text>
+</g>
+<g >
+<title>nvme_complete_rq (2,598,217 us, 0.03%)</title><rect x="554.8" y="469" width="0.3" height="15.0" fill="rgb(78,190,190)" rx="2" ry="2" />
+<text  x="557.75" y="479.5" ></text>
+</g>
+<g >
+<title>[unknown] (2,207,355 us, 0.02%)</title><rect x="345.7" y="821" width="0.2" height="15.0" fill="rgb(94,94,216)" rx="2" ry="2" />
+<text  x="348.66" y="831.5" ></text>
+</g>
+<g >
+<title>sys_futex (1,839,468,091 us, 19.21%)</title><rect x="117.4" y="837" width="226.7" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="120.37" y="847.5" >sys_futex</text>
+</g>
+<g >
+<title>cpu_startup_entry (1,900,753 us, 0.02%)</title><rect x="982.2" y="197" width="0.3" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="985.23" y="207.5" ></text>
+</g>
+<g >
+<title>hrtimer_wakeup (869,791,475 us, 9.08%)</title><rect x="10.1" y="885" width="107.2" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="13.14" y="895.5" >hrtimer_wakeup</text>
+</g>
+<g >
+<title>nvme_process_cq (2,598,217 us, 0.03%)</title><rect x="554.8" y="405" width="0.3" height="15.0" fill="rgb(83,195,195)" rx="2" ry="2" />
+<text  x="557.75" y="415.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (3,937,884 us, 0.04%)</title><rect x="655.0" y="645" width="0.5" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="657.99" y="655.5" ></text>
+</g>
+<g >
+<title>ext4_end_bio (2,598,217 us, 0.03%)</title><rect x="554.8" y="533" width="0.3" height="15.0" fill="rgb(89,201,201)" rx="2" ry="2" />
+<text  x="557.75" y="543.5" ></text>
+</g>
+<g >
+<title>rocksdb:low2 (119,621,395 us, 1.25%)</title><rect x="1037.2" y="773" width="14.8" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="1040.23" y="783.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (3,937,884 us, 0.04%)</title><rect x="655.0" y="485" width="0.5" height="15.0" fill="rgb(80,192,192)" rx="2" ry="2" />
+<text  x="657.99" y="495.5" ></text>
+</g>
+<g >
+<title>[unknown] (15,022,783 us, 0.16%)</title><rect x="344.1" y="917" width="1.8" height="15.0" fill="rgb(132,132,248)" rx="2" ry="2" />
+<text  x="347.08" y="927.5" ></text>
+</g>
+<g >
+<title>do_futex (1,074,850,242 us, 11.23%)</title><rect x="983.5" y="949" width="132.5" height="15.0" fill="rgb(123,123,241)" rx="2" ry="2" />
+<text  x="986.53" y="959.5" >do_futex</text>
+</g>
+<g >
+<title>handle_edge_irq (1,160,398 us, 0.01%)</title><rect x="344.7" y="213" width="0.2" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="347.73" y="223.5" ></text>
+</g>
+<g >
+<title>futex_wait_queue_me (1,839,468,120 us, 19.21%)</title><rect x="117.4" y="917" width="226.7" height="15.0" fill="rgb(112,112,231)" rx="2" ry="2" />
+<text  x="120.37" y="927.5" >futex_wait_queue_me</text>
+</g>
+<g >
+<title>nvme_complete_rq (1,037,769 us, 0.01%)</title><rect x="10.0" y="485" width="0.1" height="15.0" fill="rgb(51,166,166)" rx="2" ry="2" />
+<text  x="13.00" y="495.5" ></text>
+</g>
+<g >
+<title>futex_wake (954,444,847 us, 9.97%)</title><rect x="782.3" y="869" width="117.6" height="15.0" fill="rgb(90,201,201)" rx="2" ry="2" />
+<text  x="785.29" y="879.5" >futex_wake</text>
+</g>
+<g >
+<title>cpuidle_enter (1,379,978 us, 0.01%)</title><rect x="1116.1" y="245" width="0.1" height="15.0" fill="rgb(60,174,174)" rx="2" ry="2" />
+<text  x="1119.08" y="255.5" ></text>
+</g>
+<g >
+<title>__filemap_fdatawait_range (3,937,884 us, 0.04%)</title><rect x="655.0" y="725" width="0.5" height="15.0" fill="rgb(94,94,217)" rx="2" ry="2" />
+<text  x="657.99" y="735.5" ></text>
+</g>
+<g >
+<title>nvme_complete_rq (4,029,959 us, 0.04%)</title><rect x="417.9" y="469" width="0.5" height="15.0" fill="rgb(67,180,180)" rx="2" ry="2" />
+<text  x="420.93" y="479.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (9,154,849 us, 0.10%)</title><rect x="781.1" y="773" width="1.1" height="15.0" fill="rgb(93,93,216)" rx="2" ry="2" />
+<text  x="784.11" y="783.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (1,379,978 us, 0.01%)</title><rect x="1116.1" y="165" width="0.1" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="1119.08" y="175.5" ></text>
+</g>
+<g >
+<title>-- (803,483,865 us, 8.39%)</title><rect x="555.9" y="885" width="99.0" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="558.91" y="895.5" >--</text>
+</g>
+<g >
+<title>wake_up_page_bit (2,372,031 us, 0.02%)</title><rect x="344.4" y="565" width="0.3" height="15.0" fill="rgb(82,194,194)" rx="2" ry="2" />
+<text  x="347.39" y="575.5" ></text>
+</g>
+<g >
+<title>rocksdb:low1 (119,245,554 us, 1.25%)</title><rect x="600.5" y="773" width="14.7" height="15.0" fill="rgb(67,181,181)" rx="2" ry="2" />
+<text  x="603.54" y="783.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (2,598,038 us, 0.03%)</title><rect x="554.8" y="165" width="0.3" height="15.0" fill="rgb(92,203,203)" rx="2" ry="2" />
+<text  x="557.75" y="175.5" ></text>
+</g>
+<g >
+<title>__wait_on_buffer (1,064,943 us, 0.01%)</title><rect x="10.0" y="805" width="0.1" height="15.0" fill="rgb(111,111,231)" rx="2" ry="2" />
+<text  x="13.00" y="815.5" ></text>
+</g>
+<g >
+<title>blk_mq_complete_request (3,937,884 us, 0.04%)</title><rect x="655.0" y="421" width="0.5" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="657.99" y="431.5" ></text>
+</g>
+<g >
+<title>futex_wait (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="933" width="135.4" height="15.0" fill="rgb(120,120,238)" rx="2" ry="2" />
+<text  x="422.28" y="943.5" >futex_wait</text>
+</g>
+<g >
+<title>nvme_complete_rq (1,160,398 us, 0.01%)</title><rect x="344.7" y="357" width="0.2" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="347.73" y="367.5" ></text>
+</g>
+<g >
+<title>sys_futex (869,862,728 us, 9.09%)</title><rect x="10.1" y="981" width="107.2" height="15.0" fill="rgb(114,114,233)" rx="2" ry="2" />
+<text  x="13.13" y="991.5" >sys_futex</text>
+</g>
+<g >
+<title>[unknown] (12,185,027 us, 0.13%)</title><rect x="654.9" y="949" width="1.5" height="15.0" fill="rgb(110,110,230)" rx="2" ry="2" />
+<text  x="657.94" y="959.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,813,009 us, 0.10%)</title><rect x="554.7" y="949" width="1.2" height="15.0" fill="rgb(119,119,237)" rx="2" ry="2" />
+<text  x="557.70" y="959.5" ></text>
+</g>
+<g >
+<title>rocksdb:high0 (145,157,461 us, 1.52%)</title><rect x="899.9" y="773" width="17.9" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="902.92" y="783.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (1,900,753 us, 0.02%)</title><rect x="982.2" y="261" width="0.3" height="15.0" fill="rgb(52,166,166)" rx="2" ry="2" />
+<text  x="985.23" y="271.5" ></text>
+</g>
+<g >
+<title>swapper/38 (12,233,604 us, 0.13%)</title><rect x="114.6" y="677" width="1.5" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="117.62" y="687.5" ></text>
+</g>
+<g >
+<title>schedule (1,160,398 us, 0.01%)</title><rect x="344.7" y="517" width="0.2" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="347.73" y="527.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (1,037,769 us, 0.01%)</title><rect x="10.0" y="693" width="0.1" height="15.0" fill="rgb(79,192,192)" rx="2" ry="2" />
+<text  x="13.00" y="703.5" ></text>
+</g>
+<g >
+<title>schedule (954,444,856 us, 9.97%)</title><rect x="782.3" y="901" width="117.6" height="15.0" fill="rgb(125,125,242)" rx="2" ry="2" />
+<text  x="785.29" y="911.5" >schedule</text>
+</g>
+<g >
+<title>__wake_up (1,160,398 us, 0.01%)</title><rect x="344.7" y="437" width="0.2" height="15.0" fill="rgb(54,169,169)" rx="2" ry="2" />
+<text  x="347.73" y="447.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (870,927,835 us, 9.10%)</title><rect x="10.0" y="1013" width="107.3" height="15.0" fill="rgb(96,96,219)" rx="2" ry="2" />
+<text  x="13.00" y="1023.5" >entry_SYSCALL..</text>
+</g>
+<g >
+<title>[unknown] (1,086,491,774 us, 11.35%)</title><rect x="983.5" y="1029" width="133.9" height="15.0" fill="rgb(101,101,222)" rx="2" ry="2" />
+<text  x="986.53" y="1039.5" >[unknown]</text>
+</g>
+<g >
+<title>wake_page_function (1,900,842 us, 0.02%)</title><rect x="982.2" y="629" width="0.3" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="985.23" y="639.5" ></text>
+</g>
+<g >
+<title>nvme_irq (1,037,769 us, 0.01%)</title><rect x="10.0" y="405" width="0.1" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="13.00" y="415.5" ></text>
+</g>
+<g >
+<title>file_write_and_wait_range (1,390,878 us, 0.01%)</title><rect x="1116.1" y="741" width="0.1" height="15.0" fill="rgb(114,114,233)" rx="2" ry="2" />
+<text  x="1119.08" y="751.5" ></text>
+</g>
+<g >
+<title>futex_wait (954,444,856 us, 9.97%)</title><rect x="782.3" y="933" width="117.6" height="15.0" fill="rgb(119,119,238)" rx="2" ry="2" />
+<text  x="785.29" y="943.5" >futex_wait</text>
+</g>
+<g >
+<title>start_secondary (2,598,038 us, 0.03%)</title><rect x="554.8" y="181" width="0.3" height="15.0" fill="rgb(98,209,209)" rx="2" ry="2" />
+<text  x="557.75" y="191.5" ></text>
+</g>
+<g >
+<title>blk_update_request (1,380,274 us, 0.01%)</title><rect x="1116.1" y="501" width="0.1" height="15.0" fill="rgb(55,169,169)" rx="2" ry="2" />
+<text  x="1119.08" y="511.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (2,424,459 us, 0.03%)</title><rect x="344.1" y="805" width="0.3" height="15.0" fill="rgb(118,118,237)" rx="2" ry="2" />
+<text  x="347.08" y="815.5" ></text>
+</g>
+<g >
+<title>ret_from_intr (4,029,959 us, 0.04%)</title><rect x="417.9" y="277" width="0.5" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="420.93" y="287.5" ></text>
+</g>
+<g >
+<title>futex_wait (1,839,468,120 us, 19.21%)</title><rect x="117.4" y="933" width="226.7" height="15.0" fill="rgb(131,131,247)" rx="2" ry="2" />
+<text  x="120.37" y="943.5" >futex_wait</text>
+</g>
+<g >
+<title>kthread (8,160,088 us, 0.09%)</title><rect x="982.5" y="581" width="1.0" height="15.0" fill="rgb(72,185,185)" rx="2" ry="2" />
+<text  x="985.46" y="591.5" ></text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (6,377,330 us, 0.07%)</title><rect x="418.4" y="533" width="0.8" height="15.0" fill="rgb(66,179,179)" rx="2" ry="2" />
+<text  x="421.44" y="543.5" ></text>
+</g>
+<g >
+<title> (954,444,856 us, 9.97%)</title><rect x="782.3" y="1013" width="117.6" height="15.0" fill="rgb(116,116,235)" rx="2" ry="2" />
+<text  x="785.29" y="1023.5" ></text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (1,160,398 us, 0.01%)</title><rect x="344.7" y="261" width="0.2" height="15.0" fill="rgb(108,218,218)" rx="2" ry="2" />
+<text  x="347.73" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,355,880 us, 0.11%)</title><rect x="1188.7" y="885" width="1.3" height="15.0" fill="rgb(135,135,250)" rx="2" ry="2" />
+<text  x="1191.72" y="895.5" ></text>
+</g>
+<g >
+<title>end_page_writeback (3,937,884 us, 0.04%)</title><rect x="655.0" y="565" width="0.5" height="15.0" fill="rgb(105,216,216)" rx="2" ry="2" />
+<text  x="657.99" y="575.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter (1,037,769 us, 0.01%)</title><rect x="10.0" y="261" width="0.1" height="15.0" fill="rgb(58,172,172)" rx="2" ry="2" />
+<text  x="13.00" y="271.5" ></text>
+</g>
+<g >
+<title>do_fsync (11,263,682 us, 0.12%)</title><rect x="655.0" y="789" width="1.4" height="15.0" fill="rgb(86,86,210)" rx="2" ry="2" />
+<text  x="657.99" y="799.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (9,158,102 us, 0.10%)</title><rect x="1116.2" y="613" width="1.2" height="15.0" fill="rgb(55,170,170)" rx="2" ry="2" />
+<text  x="1119.25" y="623.5" ></text>
+</g>
+<g >
+<title>end_page_writeback (2,372,031 us, 0.02%)</title><rect x="344.4" y="549" width="0.3" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="347.39" y="559.5" ></text>
+</g>
+<g >
+<title> (2,424,459 us, 0.03%)</title><rect x="344.1" y="549" width="0.3" height="15.0" fill="rgb(85,197,197)" rx="2" ry="2" />
+<text  x="347.08" y="559.5" ></text>
+</g>
+<g >
+<title>call_cpuidle (3,304,144 us, 0.03%)</title><rect x="781.1" y="229" width="0.4" height="15.0" fill="rgb(64,178,178)" rx="2" ry="2" />
+<text  x="784.11" y="239.5" ></text>
+</g>
+<g >
+<title>ext4_end_bio (1,380,274 us, 0.01%)</title><rect x="1116.1" y="533" width="0.1" height="15.0" fill="rgb(94,206,206)" rx="2" ry="2" />
+<text  x="1119.08" y="543.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,641,328 us, 0.12%)</title><rect x="1116.0" y="949" width="1.4" height="15.0" fill="rgb(137,137,252)" rx="2" ry="2" />
+<text  x="1119.01" y="959.5" ></text>
+</g>
+<g >
+<title>handle_edge_irq (2,598,217 us, 0.03%)</title><rect x="554.8" y="325" width="0.3" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="557.75" y="335.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,867,445 us, 0.11%)</title><rect x="1188.7" y="1013" width="1.3" height="15.0" fill="rgb(98,98,220)" rx="2" ry="2" />
+<text  x="1191.66" y="1023.5" ></text>
+</g>
+<g >
+<title> (1,839,476,050 us, 19.21%)</title><rect x="117.4" y="1013" width="226.7" height="15.0" fill="rgb(80,80,205)" rx="2" ry="2" />
+<text  x="120.36" y="1023.5" ></text>
+</g>
+<g >
+<title>swapper/35 (32,657,834 us, 0.34%)</title><rect x="110.6" y="677" width="4.0" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="113.60" y="687.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (2,198,241 us, 0.02%)</title><rect x="345.7" y="677" width="0.2" height="15.0" fill="rgb(102,102,223)" rx="2" ry="2" />
+<text  x="348.66" y="687.5" ></text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (3,937,884 us, 0.04%)</title><rect x="655.0" y="453" width="0.5" height="15.0" fill="rgb(77,190,190)" rx="2" ry="2" />
+<text  x="657.99" y="463.5" ></text>
+</g>
+<g >
+<title>do_IRQ (1,380,274 us, 0.01%)</title><rect x="1116.1" y="293" width="0.1" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="1119.08" y="303.5" ></text>
+</g>
+<g >
+<title>rocksdb:low7 (176,304,130 us, 1.84%)</title><rect x="759.3" y="773" width="21.8" height="15.0" fill="rgb(102,212,212)" rx="2" ry="2" />
+<text  x="762.33" y="783.5" >r..</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (10,325,694 us, 0.11%)</title><rect x="344.4" y="821" width="1.3" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="347.39" y="831.5" ></text>
+</g>
+<g >
+<title>ret_from_fork (5,759,902 us, 0.06%)</title><rect x="781.5" y="565" width="0.7" height="15.0" fill="rgb(85,197,197)" rx="2" ry="2" />
+<text  x="784.53" y="575.5" ></text>
+</g>
+<g >
+<title>__wake_up_bit (1,037,769 us, 0.01%)</title><rect x="10.0" y="613" width="0.1" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="13.00" y="623.5" ></text>
+</g>
+<g >
+<title>futex_wait (583,703,267 us, 6.10%)</title><rect x="345.9" y="933" width="72.0" height="15.0" fill="rgb(130,130,247)" rx="2" ry="2" />
+<text  x="348.93" y="943.5" >futex_wait</text>
+</g>
+<g >
+<title>[unknown] (11,641,328 us, 0.12%)</title><rect x="1116.0" y="965" width="1.4" height="15.0" fill="rgb(128,128,245)" rx="2" ry="2" />
+<text  x="1119.01" y="975.5" ></text>
+</g>
+<g >
+<title>rocksdb:low0 (140,458,952 us, 1.47%)</title><rect x="583.2" y="773" width="17.3" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="586.23" y="783.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (3,304,144 us, 0.03%)</title><rect x="781.1" y="165" width="0.4" height="15.0" fill="rgb(76,189,189)" rx="2" ry="2" />
+<text  x="784.11" y="175.5" ></text>
+</g>
+<g >
+<title>ext4_mb_init_cache (1,064,943 us, 0.01%)</title><rect x="10.0" y="837" width="0.1" height="15.0" fill="rgb(121,121,239)" rx="2" ry="2" />
+<text  x="13.00" y="847.5" ></text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (2,372,031 us, 0.02%)</title><rect x="344.4" y="357" width="0.3" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="347.39" y="367.5" ></text>
+</g>
+<g >
+<title> (577,828,259 us, 6.04%)</title><rect x="1117.4" y="1013" width="71.3" height="15.0" fill="rgb(85,85,209)" rx="2" ry="2" />
+<text  x="1120.44" y="1023.5" ></text>
+</g>
+<g >
+<title>jbd2_complete_transaction (7,999,127 us, 0.08%)</title><rect x="1189.0" y="741" width="0.9" height="15.0" fill="rgb(121,121,239)" rx="2" ry="2" />
+<text  x="1191.96" y="751.5" ></text>
+</g>
+<g >
+<title>handle_edge_irq (1,900,842 us, 0.02%)</title><rect x="982.2" y="325" width="0.3" height="15.0" fill="rgb(56,170,170)" rx="2" ry="2" />
+<text  x="985.23" y="335.5" ></text>
+</g>
+<g >
+<title>-- (6,357,641 us, 0.07%)</title><rect x="344.9" y="677" width="0.8" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="347.88" y="687.5" ></text>
+</g>
+<g >
+<title> (2,426,890 us, 0.03%)</title><rect x="344.1" y="885" width="0.3" height="15.0" fill="rgb(122,122,240)" rx="2" ry="2" />
+<text  x="347.08" y="895.5" ></text>
+</g>
+<g >
+<title>do_futex (954,444,847 us, 9.97%)</title><rect x="782.3" y="853" width="117.6" height="15.0" fill="rgb(99,210,210)" rx="2" ry="2" />
+<text  x="785.29" y="863.5" >do_futex</text>
+</g>
+<g >
+<title>blk_mq_complete_request (1,037,769 us, 0.01%)</title><rect x="10.0" y="437" width="0.1" height="15.0" fill="rgb(93,204,204)" rx="2" ry="2" />
+<text  x="13.00" y="447.5" ></text>
+</g>
+<g >
+<title>-- (7,999,127 us, 0.08%)</title><rect x="1189.0" y="693" width="0.9" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="1191.96" y="703.5" ></text>
+</g>
+<g >
+<title>kjournald2 (7,999,101 us, 0.08%)</title><rect x="1189.0" y="597" width="0.9" height="15.0" fill="rgb(96,208,208)" rx="2" ry="2" />
+<text  x="1191.96" y="607.5" ></text>
+</g>
+<g >
+<title>-- (869,862,728 us, 9.09%)</title><rect x="10.1" y="901" width="107.2" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="13.13" y="911.5" >--</text>
+</g>
+<g >
+<title>futex_wait_queue_me (583,703,267 us, 6.10%)</title><rect x="345.9" y="917" width="72.0" height="15.0" fill="rgb(115,115,234)" rx="2" ry="2" />
+<text  x="348.93" y="927.5" >futex_wa..</text>
+</g>
+<g >
+<title>ext4_bio_write_page (1,160,469 us, 0.01%)</title><rect x="344.7" y="629" width="0.2" height="15.0" fill="rgb(127,127,244)" rx="2" ry="2" />
+<text  x="347.73" y="639.5" ></text>
+</g>
+<g >
+<title>wait_on_page_bit_common (4,029,974 us, 0.04%)</title><rect x="417.9" y="709" width="0.5" height="15.0" fill="rgb(119,119,238)" rx="2" ry="2" />
+<text  x="420.93" y="719.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (4,029,959 us, 0.04%)</title><rect x="417.9" y="437" width="0.5" height="15.0" fill="rgb(84,196,196)" rx="2" ry="2" />
+<text  x="420.93" y="447.5" ></text>
+</g>
+<g >
+<title>do_IRQ (1,160,398 us, 0.01%)</title><rect x="344.7" y="181" width="0.2" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="347.73" y="191.5" ></text>
+</g>
+<g >
+<title>blk_mq_complete_request (1,850,852 us, 0.02%)</title><rect x="1188.7" y="421" width="0.3" height="15.0" fill="rgb(65,179,179)" rx="2" ry="2" />
+<text  x="1191.72" y="431.5" ></text>
+</g>
+<g >
+<title>start_secondary (1,160,398 us, 0.01%)</title><rect x="344.7" y="69" width="0.2" height="15.0" fill="rgb(56,171,171)" rx="2" ry="2" />
+<text  x="347.73" y="79.5" ></text>
+</g>
+<g >
+<title>do_futex (1,839,468,091 us, 19.21%)</title><rect x="117.4" y="853" width="226.7" height="15.0" fill="rgb(99,210,210)" rx="2" ry="2" />
+<text  x="120.37" y="863.5" >do_futex</text>
+</g>
+<g >
+<title>blk_mq_end_request (1,380,274 us, 0.01%)</title><rect x="1116.1" y="485" width="0.1" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="1119.08" y="495.5" ></text>
+</g>
+<g >
+<title> (6,377,330 us, 0.07%)</title><rect x="418.4" y="549" width="0.8" height="15.0" fill="rgb(51,166,166)" rx="2" ry="2" />
+<text  x="421.44" y="559.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (3,937,884 us, 0.04%)</title><rect x="655.0" y="613" width="0.5" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="657.99" y="623.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (2,426,570 us, 0.03%)</title><rect x="344.1" y="869" width="0.3" height="15.0" fill="rgb(101,101,223)" rx="2" ry="2" />
+<text  x="347.08" y="879.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (1,850,852 us, 0.02%)</title><rect x="1188.7" y="357" width="0.3" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="1191.72" y="367.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,854,509,634 us, 19.37%)</title><rect x="117.4" y="1029" width="228.5" height="15.0" fill="rgb(124,124,242)" rx="2" ry="2" />
+<text  x="120.36" y="1039.5" >[unknown]</text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (2,424,459 us, 0.03%)</title><rect x="344.1" y="613" width="0.3" height="15.0" fill="rgb(93,205,205)" rx="2" ry="2" />
+<text  x="347.08" y="623.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,641,329 us, 0.12%)</title><rect x="1116.0" y="981" width="1.4" height="15.0" fill="rgb(129,129,245)" rx="2" ry="2" />
+<text  x="1119.01" y="991.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (3,304,210 us, 0.03%)</title><rect x="781.1" y="613" width="0.4" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="784.11" y="623.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (3,304,210 us, 0.03%)</title><rect x="781.1" y="485" width="0.4" height="15.0" fill="rgb(93,204,204)" rx="2" ry="2" />
+<text  x="784.11" y="495.5" ></text>
+</g>
+<g >
+<title>futex_wait_queue_me (803,483,865 us, 8.39%)</title><rect x="555.9" y="917" width="99.0" height="15.0" fill="rgb(91,91,214)" rx="2" ry="2" />
+<text  x="558.91" y="927.5" >futex_wait_..</text>
+</g>
+<g >
+<title>cpuidle_enter (1,900,753 us, 0.02%)</title><rect x="982.2" y="245" width="0.3" height="15.0" fill="rgb(90,202,202)" rx="2" ry="2" />
+<text  x="985.23" y="255.5" ></text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (5,759,902 us, 0.06%)</title><rect x="781.5" y="533" width="0.7" height="15.0" fill="rgb(93,205,205)" rx="2" ry="2" />
+<text  x="784.53" y="543.5" ></text>
+</g>
+<g >
+<title>jbd2_complete_transaction (6,357,641 us, 0.07%)</title><rect x="344.9" y="725" width="0.8" height="15.0" fill="rgb(115,115,234)" rx="2" ry="2" />
+<text  x="347.88" y="735.5" ></text>
+</g>
+<g >
+<title>out_of_line_wait_on_bit (1,064,943 us, 0.01%)</title><rect x="10.0" y="789" width="0.1" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="13.00" y="799.5" ></text>
+</g>
+<g >
+<title>[unknown] (2,207,427 us, 0.02%)</title><rect x="345.7" y="837" width="0.2" height="15.0" fill="rgb(98,98,220)" rx="2" ry="2" />
+<text  x="348.66" y="847.5" ></text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (1,850,852 us, 0.02%)</title><rect x="1188.7" y="453" width="0.3" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="1191.72" y="463.5" ></text>
+</g>
+<g >
+<title>do_idle (4,029,424 us, 0.04%)</title><rect x="417.9" y="213" width="0.5" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="420.93" y="223.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (7,176,391 us, 0.07%)</title><rect x="655.5" y="661" width="0.9" height="15.0" fill="rgb(81,193,193)" rx="2" ry="2" />
+<text  x="658.50" y="671.5" ></text>
+</g>
+<g >
+<title>blk_update_request (1,850,852 us, 0.02%)</title><rect x="1188.7" y="501" width="0.3" height="15.0" fill="rgb(57,172,172)" rx="2" ry="2" />
+<text  x="1191.72" y="511.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (2,598,217 us, 0.03%)</title><rect x="554.8" y="613" width="0.3" height="15.0" fill="rgb(61,175,175)" rx="2" ry="2" />
+<text  x="557.75" y="623.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,896,643 us, 0.11%)</title><rect x="417.9" y="869" width="1.4" height="15.0" fill="rgb(107,107,227)" rx="2" ry="2" />
+<text  x="420.93" y="879.5" ></text>
+</g>
+<g >
+<title>do_idle (3,304,144 us, 0.03%)</title><rect x="781.1" y="213" width="0.4" height="15.0" fill="rgb(79,192,192)" rx="2" ry="2" />
+<text  x="784.11" y="223.5" ></text>
+</g>
+<g >
+<title>ext4_end_bio (3,937,884 us, 0.04%)</title><rect x="655.0" y="533" width="0.5" height="15.0" fill="rgb(72,185,185)" rx="2" ry="2" />
+<text  x="657.99" y="543.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,104,862 us, 0.12%)</title><rect x="982.2" y="949" width="1.3" height="15.0" fill="rgb(103,103,224)" rx="2" ry="2" />
+<text  x="985.16" y="959.5" ></text>
+</g>
+<g >
+<title>rocksdb:low0 (84,183,301 us, 0.88%)</title><rect x="1136.6" y="773" width="10.4" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="1139.60" y="783.5" ></text>
+</g>
+<g >
+<title>swapper/28 (1,492,145 us, 0.02%)</title><rect x="982.3" y="133" width="0.2" height="15.0" fill="rgb(107,218,218)" rx="2" ry="2" />
+<text  x="985.28" y="143.5" ></text>
+</g>
+<g >
+<title>schedule (577,809,542 us, 6.04%)</title><rect x="1117.4" y="901" width="71.3" height="15.0" fill="rgb(95,95,217)" rx="2" ry="2" />
+<text  x="1120.45" y="911.5" >schedule</text>
+</g>
+<g >
+<title>rocksdb:high0 (155,388,105 us, 1.62%)</title><rect x="1117.4" y="773" width="19.2" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="1120.45" y="783.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (9,892,393 us, 0.10%)</title><rect x="1188.7" y="837" width="1.2" height="15.0" fill="rgb(98,98,220)" rx="2" ry="2" />
+<text  x="1191.72" y="847.5" ></text>
+</g>
+<g >
+<title>ext4_end_bio (3,304,210 us, 0.03%)</title><rect x="781.1" y="533" width="0.4" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="784.11" y="543.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (583,703,711 us, 6.10%)</title><rect x="345.9" y="997" width="72.0" height="15.0" fill="rgb(97,97,219)" rx="2" ry="2" />
+<text  x="348.93" y="1007.5" >entry_SY..</text>
+</g>
+<g >
+<title>[unknown] (11,375,368 us, 0.12%)</title><rect x="417.9" y="997" width="1.4" height="15.0" fill="rgb(93,93,216)" rx="2" ry="2" />
+<text  x="420.87" y="1007.5" ></text>
+</g>
+<g >
+<title>do_IRQ (3,304,210 us, 0.03%)</title><rect x="781.1" y="293" width="0.4" height="15.0" fill="rgb(103,213,213)" rx="2" ry="2" />
+<text  x="784.11" y="303.5" ></text>
+</g>
+<g >
+<title>do_futex (583,703,267 us, 6.10%)</title><rect x="345.9" y="949" width="72.0" height="15.0" fill="rgb(103,103,224)" rx="2" ry="2" />
+<text  x="348.93" y="959.5" >do_futex</text>
+</g>
+<g >
+<title>__wake_up_common_lock (7,999,101 us, 0.08%)</title><rect x="1189.0" y="645" width="0.9" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="1191.96" y="655.5" ></text>
+</g>
+<g >
+<title>sys_futex (954,444,856 us, 9.97%)</title><rect x="782.3" y="965" width="117.6" height="15.0" fill="rgb(110,110,230)" rx="2" ry="2" />
+<text  x="785.29" y="975.5" >sys_futex</text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (6,377,330 us, 0.07%)</title><rect x="418.4" y="613" width="0.8" height="15.0" fill="rgb(53,167,167)" rx="2" ry="2" />
+<text  x="421.44" y="623.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,813,019 us, 0.10%)</title><rect x="554.7" y="965" width="1.2" height="15.0" fill="rgb(97,97,219)" rx="2" ry="2" />
+<text  x="557.70" y="975.5" ></text>
+</g>
+<g >
+<title>[unknown] (12,185,044 us, 0.13%)</title><rect x="654.9" y="1013" width="1.5" height="15.0" fill="rgb(101,101,222)" rx="2" ry="2" />
+<text  x="657.94" y="1023.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (2,598,038 us, 0.03%)</title><rect x="554.8" y="197" width="0.3" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="557.75" y="207.5" ></text>
+</g>
+<g >
+<title>wake_up_page_bit (2,598,217 us, 0.03%)</title><rect x="554.8" y="581" width="0.3" height="15.0" fill="rgb(93,205,205)" rx="2" ry="2" />
+<text  x="557.75" y="591.5" ></text>
+</g>
+<g >
+<title>kjournald2 (2,198,241 us, 0.02%)</title><rect x="345.7" y="549" width="0.2" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="348.66" y="559.5" ></text>
+</g>
+<g >
+<title>ret_from_intr (1,037,769 us, 0.01%)</title><rect x="10.0" y="293" width="0.1" height="15.0" fill="rgb(61,175,175)" rx="2" ry="2" />
+<text  x="13.00" y="303.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (667,286,819 us, 6.97%)</title><rect x="899.9" y="981" width="82.3" height="15.0" fill="rgb(127,127,244)" rx="2" ry="2" />
+<text  x="902.92" y="991.5" >do_syscal..</text>
+</g>
+<g >
+<title>schedule (2,198,241 us, 0.02%)</title><rect x="345.7" y="661" width="0.2" height="15.0" fill="rgb(83,83,207)" rx="2" ry="2" />
+<text  x="348.66" y="671.5" ></text>
+</g>
+<g >
+<title>[unknown] (12,185,044 us, 0.13%)</title><rect x="654.9" y="997" width="1.5" height="15.0" fill="rgb(127,127,244)" rx="2" ry="2" />
+<text  x="657.94" y="1007.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (2,372,031 us, 0.02%)</title><rect x="344.4" y="469" width="0.3" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="347.39" y="479.5" ></text>
+</g>
+<g >
+<title> (2,598,038 us, 0.03%)</title><rect x="554.8" y="149" width="0.3" height="15.0" fill="rgb(69,183,183)" rx="2" ry="2" />
+<text  x="557.75" y="159.5" ></text>
+</g>
+<g >
+<title>end_bio_bh_io_sync (1,037,769 us, 0.01%)</title><rect x="10.0" y="549" width="0.1" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="13.00" y="559.5" ></text>
+</g>
+<g >
+<title>-- (1,380,274 us, 0.01%)</title><rect x="1116.1" y="661" width="0.1" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="1119.08" y="671.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (1,160,398 us, 0.01%)</title><rect x="344.7" y="245" width="0.2" height="15.0" fill="rgb(78,191,191)" rx="2" ry="2" />
+<text  x="347.73" y="255.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter (1,850,666 us, 0.02%)</title><rect x="1188.7" y="245" width="0.3" height="15.0" fill="rgb(79,191,191)" rx="2" ry="2" />
+<text  x="1191.72" y="255.5" ></text>
+</g>
+<g >
+<title>kthread (9,158,102 us, 0.10%)</title><rect x="1116.2" y="581" width="1.2" height="15.0" fill="rgb(93,204,204)" rx="2" ry="2" />
+<text  x="1119.25" y="591.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (803,483,865 us, 8.39%)</title><rect x="555.9" y="805" width="99.0" height="15.0" fill="rgb(90,202,202)" rx="2" ry="2" />
+<text  x="558.91" y="815.5" >entry_SYSCA..</text>
+</g>
+<g >
+<title>sys_futex (583,703,267 us, 6.10%)</title><rect x="345.9" y="965" width="72.0" height="15.0" fill="rgb(125,125,243)" rx="2" ry="2" />
+<text  x="348.93" y="975.5" >sys_futex</text>
+</g>
+<g >
+<title>rocksdb:low3 (188,603,307 us, 1.97%)</title><rect x="827.7" y="773" width="23.2" height="15.0" fill="rgb(57,171,171)" rx="2" ry="2" />
+<text  x="830.69" y="783.5" >r..</text>
+</g>
+<g >
+<title>ret_from_intr (2,372,031 us, 0.02%)</title><rect x="344.4" y="261" width="0.3" height="15.0" fill="rgb(89,200,200)" rx="2" ry="2" />
+<text  x="347.39" y="271.5" ></text>
+</g>
+<g >
+<title>do_idle (1,900,753 us, 0.02%)</title><rect x="982.2" y="213" width="0.3" height="15.0" fill="rgb(55,169,169)" rx="2" ry="2" />
+<text  x="985.23" y="223.5" ></text>
+</g>
+<g >
+<title>schedule (1,074,850,242 us, 11.23%)</title><rect x="983.5" y="901" width="132.5" height="15.0" fill="rgb(122,122,240)" rx="2" ry="2" />
+<text  x="986.53" y="911.5" >schedule</text>
+</g>
+<g >
+<title>kthread (2,198,241 us, 0.02%)</title><rect x="345.7" y="533" width="0.2" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="348.66" y="543.5" ></text>
+</g>
+<g >
+<title>sys_futex (667,286,698 us, 6.97%)</title><rect x="899.9" y="837" width="82.3" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="902.92" y="847.5" >sys_futex</text>
+</g>
+<g >
+<title>rocksdb:low1 (122,317,951 us, 1.28%)</title><rect x="699.8" y="773" width="15.1" height="15.0" fill="rgb(76,188,188)" rx="2" ry="2" />
+<text  x="702.82" y="783.5" ></text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (3,304,210 us, 0.03%)</title><rect x="781.1" y="453" width="0.4" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="784.11" y="463.5" ></text>
+</g>
+<g >
+<title>do_IRQ (1,900,842 us, 0.02%)</title><rect x="982.2" y="293" width="0.3" height="15.0" fill="rgb(64,178,178)" rx="2" ry="2" />
+<text  x="985.23" y="303.5" ></text>
+</g>
+<g >
+<title>-- (1,064,943 us, 0.01%)</title><rect x="10.0" y="709" width="0.1" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="13.00" y="719.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (1,900,842 us, 0.02%)</title><rect x="982.2" y="437" width="0.3" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="985.23" y="447.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,943,581 us, 0.11%)</title><rect x="417.9" y="901" width="1.4" height="15.0" fill="rgb(128,128,245)" rx="2" ry="2" />
+<text  x="420.93" y="911.5" ></text>
+</g>
+<g >
+<title>futex_wait_queue_me (1,074,850,242 us, 11.23%)</title><rect x="983.5" y="917" width="132.5" height="15.0" fill="rgb(92,92,215)" rx="2" ry="2" />
+<text  x="986.53" y="927.5" >futex_wait_queue..</text>
+</g>
+<g >
+<title>mpage_submit_page (1,160,469 us, 0.01%)</title><rect x="344.7" y="645" width="0.2" height="15.0" fill="rgb(101,101,223)" rx="2" ry="2" />
+<text  x="347.73" y="655.5" ></text>
+</g>
+<g >
+<title>schedule (803,483,865 us, 8.39%)</title><rect x="555.9" y="901" width="99.0" height="15.0" fill="rgb(83,83,207)" rx="2" ry="2" />
+<text  x="558.91" y="911.5" >schedule</text>
+</g>
+<g >
+<title>rocksdb:low3 (134,217,851 us, 1.40%)</title><rect x="389.8" y="773" width="16.5" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="392.76" y="783.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,867,300 us, 0.11%)</title><rect x="1188.7" y="949" width="1.3" height="15.0" fill="rgb(115,115,234)" rx="2" ry="2" />
+<text  x="1191.66" y="959.5" ></text>
+</g>
+<g >
+<title>schedule (869,862,728 us, 9.09%)</title><rect x="10.1" y="917" width="107.2" height="15.0" fill="rgb(134,134,250)" rx="2" ry="2" />
+<text  x="13.13" y="927.5" >schedule</text>
+</g>
+<g >
+<title>[unknown] (10,898,717 us, 0.11%)</title><rect x="417.9" y="885" width="1.4" height="15.0" fill="rgb(82,82,206)" rx="2" ry="2" />
+<text  x="420.93" y="895.5" ></text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (8,160,088 us, 0.09%)</title><rect x="982.5" y="533" width="1.0" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="985.46" y="543.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,813,068 us, 0.10%)</title><rect x="554.7" y="1013" width="1.2" height="15.0" fill="rgb(110,110,230)" rx="2" ry="2" />
+<text  x="557.70" y="1023.5" ></text>
+</g>
+<g >
+<title>sys_fdatasync (10,487,439 us, 0.11%)</title><rect x="417.9" y="805" width="1.3" height="15.0" fill="rgb(92,92,215)" rx="2" ry="2" />
+<text  x="420.93" y="815.5" ></text>
+</g>
+<g >
+<title>handle_edge_irq (2,372,031 us, 0.02%)</title><rect x="344.4" y="309" width="0.3" height="15.0" fill="rgb(53,168,168)" rx="2" ry="2" />
+<text  x="347.39" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (12,595,471 us, 0.13%)</title><rect x="344.4" y="869" width="1.5" height="15.0" fill="rgb(109,109,229)" rx="2" ry="2" />
+<text  x="347.38" y="879.5" ></text>
+</g>
+<g >
+<title>schedule (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="901" width="135.4" height="15.0" fill="rgb(90,90,213)" rx="2" ry="2" />
+<text  x="422.28" y="911.5" >schedule</text>
+</g>
+<g >
+<title>__filemap_fdatawait_range (3,304,717 us, 0.03%)</title><rect x="781.1" y="725" width="0.4" height="15.0" fill="rgb(128,128,245)" rx="2" ry="2" />
+<text  x="784.11" y="735.5" ></text>
+</g>
+<g >
+<title>__wake_up_locked_key_bookmark (1,850,852 us, 0.02%)</title><rect x="1188.7" y="597" width="0.3" height="15.0" fill="rgb(52,167,167)" rx="2" ry="2" />
+<text  x="1191.72" y="607.5" ></text>
+</g>
+<g >
+<title>handle_edge_irq (3,304,210 us, 0.03%)</title><rect x="781.1" y="325" width="0.4" height="15.0" fill="rgb(53,168,168)" rx="2" ry="2" />
+<text  x="784.11" y="335.5" ></text>
+</g>
+<g >
+<title>mpage_map_and_submit_buffers (1,160,469 us, 0.01%)</title><rect x="344.7" y="661" width="0.2" height="15.0" fill="rgb(89,89,212)" rx="2" ry="2" />
+<text  x="347.73" y="671.5" ></text>
+</g>
+<g >
+<title>kjournald2 (6,291,311 us, 0.07%)</title><rect x="555.1" y="597" width="0.8" height="15.0" fill="rgb(98,209,209)" rx="2" ry="2" />
+<text  x="558.08" y="607.5" ></text>
+</g>
+<g >
+<title>generic_make_request (1,160,469 us, 0.01%)</title><rect x="344.7" y="581" width="0.2" height="15.0" fill="rgb(98,98,220)" rx="2" ry="2" />
+<text  x="347.73" y="591.5" ></text>
+</g>
+<g >
+<title>jbd2_complete_transaction (7,176,391 us, 0.07%)</title><rect x="655.5" y="741" width="0.9" height="15.0" fill="rgb(106,106,226)" rx="2" ry="2" />
+<text  x="658.50" y="751.5" ></text>
+</g>
+<g >
+<title>nvme_irq (1,160,398 us, 0.01%)</title><rect x="344.7" y="277" width="0.2" height="15.0" fill="rgb(89,201,201)" rx="2" ry="2" />
+<text  x="347.73" y="287.5" ></text>
+</g>
+<g >
+<title>wbt_wake_function (1,160,398 us, 0.01%)</title><rect x="344.7" y="485" width="0.2" height="15.0" fill="rgb(76,188,188)" rx="2" ry="2" />
+<text  x="347.73" y="495.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,098,714,905 us, 11.48%)</title><rect x="419.3" y="997" width="135.4" height="15.0" fill="rgb(117,117,236)" rx="2" ry="2" />
+<text  x="422.28" y="1007.5" >entry_SYSCALL_64_..</text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (4,029,959 us, 0.04%)</title><rect x="417.9" y="453" width="0.5" height="15.0" fill="rgb(105,215,215)" rx="2" ry="2" />
+<text  x="420.93" y="463.5" ></text>
+</g>
+<g >
+<title>swapper/22 (31,203,546 us, 0.33%)</title><rect x="71.5" y="677" width="3.8" height="15.0" fill="rgb(58,172,172)" rx="2" ry="2" />
+<text  x="74.46" y="687.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (4,029,959 us, 0.04%)</title><rect x="417.9" y="613" width="0.5" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="420.93" y="623.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (3,937,884 us, 0.04%)</title><rect x="655.0" y="357" width="0.5" height="15.0" fill="rgb(59,173,173)" rx="2" ry="2" />
+<text  x="657.99" y="367.5" ></text>
+</g>
+<g >
+<title>[unknown] (15,033,450 us, 0.16%)</title><rect x="344.1" y="933" width="1.8" height="15.0" fill="rgb(109,109,229)" rx="2" ry="2" />
+<text  x="347.08" y="943.5" ></text>
+</g>
+<g >
+<title>kjournald2 (8,160,088 us, 0.09%)</title><rect x="982.5" y="597" width="1.0" height="15.0" fill="rgb(78,190,190)" rx="2" ry="2" />
+<text  x="985.46" y="607.5" ></text>
+</g>
+<g >
+<title>futex_wake (583,703,258 us, 6.10%)</title><rect x="345.9" y="869" width="72.0" height="15.0" fill="rgb(67,181,181)" rx="2" ry="2" />
+<text  x="348.93" y="879.5" >futex_wake</text>
+</g>
+<g >
+<title>__wake_up_locked_key_bookmark (3,937,884 us, 0.04%)</title><rect x="655.0" y="597" width="0.5" height="15.0" fill="rgb(78,190,190)" rx="2" ry="2" />
+<text  x="657.99" y="607.5" ></text>
+</g>
+<g >
+<title> (583,704,714 us, 6.10%)</title><rect x="345.9" y="1013" width="72.0" height="15.0" fill="rgb(112,112,231)" rx="2" ry="2" />
+<text  x="348.93" y="1023.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (10,071,740 us, 0.11%)</title><rect x="982.2" y="773" width="1.3" height="15.0" fill="rgb(104,104,225)" rx="2" ry="2" />
+<text  x="985.23" y="783.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (3,304,210 us, 0.03%)</title><rect x="781.1" y="357" width="0.4" height="15.0" fill="rgb(81,194,194)" rx="2" ry="2" />
+<text  x="784.11" y="367.5" ></text>
+</g>
+<g >
+<title> (8,973,116 us, 0.09%)</title><rect x="554.8" y="853" width="1.1" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="557.75" y="863.5" ></text>
+</g>
+<g >
+<title>swapper/28 (2,475,917 us, 0.03%)</title><rect x="418.1" y="133" width="0.3" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="421.06" y="143.5" ></text>
+</g>
+<g >
+<title>ret_from_fork (7,176,391 us, 0.07%)</title><rect x="655.5" y="565" width="0.9" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="658.50" y="575.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (1,850,852 us, 0.02%)</title><rect x="1188.7" y="485" width="0.3" height="15.0" fill="rgb(92,204,204)" rx="2" ry="2" />
+<text  x="1191.72" y="495.5" ></text>
+</g>
+<g >
+<title>futex_wait_queue_me (577,809,542 us, 6.04%)</title><rect x="1117.4" y="917" width="71.3" height="15.0" fill="rgb(115,115,234)" rx="2" ry="2" />
+<text  x="1120.45" y="927.5" >futex_wa..</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="805" width="124.7" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="659.44" y="815.5" >entry_SYSCALL_6..</text>
+</g>
+<g >
+<title>call_cpuidle (1,850,666 us, 0.02%)</title><rect x="1188.7" y="229" width="0.3" height="15.0" fill="rgb(78,191,191)" rx="2" ry="2" />
+<text  x="1191.72" y="239.5" ></text>
+</g>
+<g >
+<title>do_futex (1,074,850,233 us, 11.23%)</title><rect x="983.5" y="853" width="132.5" height="15.0" fill="rgb(85,197,197)" rx="2" ry="2" />
+<text  x="986.53" y="863.5" >do_futex</text>
+</g>
+<g >
+<title>call_cpuidle (3,937,710 us, 0.04%)</title><rect x="655.0" y="229" width="0.5" height="15.0" fill="rgb(55,169,169)" rx="2" ry="2" />
+<text  x="657.99" y="239.5" ></text>
+</g>
+<g >
+<title>swapper/25 (1,727,687 us, 0.02%)</title><rect x="554.8" y="133" width="0.2" height="15.0" fill="rgb(60,175,175)" rx="2" ry="2" />
+<text  x="557.82" y="143.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (8,972,943 us, 0.09%)</title><rect x="554.8" y="773" width="1.1" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="557.75" y="783.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (10,325,678 us, 0.11%)</title><rect x="344.4" y="757" width="1.3" height="15.0" fill="rgb(136,136,252)" rx="2" ry="2" />
+<text  x="347.39" y="767.5" ></text>
+</g>
+<g >
+<title>handle_irq_event (4,029,959 us, 0.04%)</title><rect x="417.9" y="341" width="0.5" height="15.0" fill="rgb(100,210,210)" rx="2" ry="2" />
+<text  x="420.93" y="351.5" ></text>
+</g>
+<g >
+<title>rocksdb:low1 (85,771,983 us, 0.90%)</title><rect x="928.8" y="773" width="10.6" height="15.0" fill="rgb(88,200,200)" rx="2" ry="2" />
+<text  x="931.81" y="783.5" ></text>
+</g>
+<g >
+<title>rocksdb:low0 (87,532,620 us, 0.91%)</title><rect x="689.0" y="773" width="10.8" height="15.0" fill="rgb(88,200,200)" rx="2" ry="2" />
+<text  x="692.03" y="783.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (2,424,459 us, 0.03%)</title><rect x="344.1" y="661" width="0.3" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="347.08" y="671.5" ></text>
+</g>
+<g >
+<title>rocksdb:low3 (120,806,161 us, 1.26%)</title><rect x="939.4" y="773" width="14.9" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="942.38" y="783.5" ></text>
+</g>
+<g >
+<title>__wake_up_common_lock (5,759,902 us, 0.06%)</title><rect x="781.5" y="645" width="0.7" height="15.0" fill="rgb(65,179,179)" rx="2" ry="2" />
+<text  x="784.53" y="655.5" ></text>
+</g>
+<g >
+<title>rocksdb:low2 (129,283,637 us, 1.35%)</title><rect x="468.4" y="773" width="15.9" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="471.38" y="783.5" ></text>
+</g>
+<g >
+<title>blk_mq_complete_request (3,304,210 us, 0.03%)</title><rect x="781.1" y="421" width="0.4" height="15.0" fill="rgb(88,200,200)" rx="2" ry="2" />
+<text  x="784.11" y="431.5" ></text>
+</g>
+<g >
+<title> (1,839,468,091 us, 19.21%)</title><rect x="117.4" y="789" width="226.7" height="15.0" fill="rgb(52,167,167)" rx="2" ry="2" />
+<text  x="120.37" y="799.5" ></text>
+</g>
+<g >
+<title> (1,379,978 us, 0.01%)</title><rect x="1116.1" y="149" width="0.1" height="15.0" fill="rgb(83,196,196)" rx="2" ry="2" />
+<text  x="1119.08" y="159.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,588,661 us, 0.11%)</title><rect x="982.2" y="917" width="1.3" height="15.0" fill="rgb(94,94,217)" rx="2" ry="2" />
+<text  x="985.23" y="927.5" ></text>
+</g>
+<g >
+<title>file_write_and_wait_range (3,968,024 us, 0.04%)</title><rect x="344.4" y="725" width="0.5" height="15.0" fill="rgb(131,131,248)" rx="2" ry="2" />
+<text  x="347.39" y="735.5" ></text>
+</g>
+<g >
+<title>jbd2_complete_transaction (6,377,369 us, 0.07%)</title><rect x="418.4" y="741" width="0.8" height="15.0" fill="rgb(139,139,254)" rx="2" ry="2" />
+<text  x="421.44" y="751.5" ></text>
+</g>
+<g >
+<title>do_idle (2,598,038 us, 0.03%)</title><rect x="554.8" y="213" width="0.3" height="15.0" fill="rgb(99,210,210)" rx="2" ry="2" />
+<text  x="557.75" y="223.5" ></text>
+</g>
+<g >
+<title>sys_futex (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="965" width="124.7" height="15.0" fill="rgb(113,113,232)" rx="2" ry="2" />
+<text  x="659.44" y="975.5" >sys_futex</text>
+</g>
+<g >
+<title>[unknown] (11,641,326 us, 0.12%)</title><rect x="1116.0" y="933" width="1.4" height="15.0" fill="rgb(108,108,228)" rx="2" ry="2" />
+<text  x="1119.01" y="943.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (7,176,391 us, 0.07%)</title><rect x="655.5" y="725" width="0.9" height="15.0" fill="rgb(139,139,254)" rx="2" ry="2" />
+<text  x="658.50" y="735.5" ></text>
+</g>
+<g >
+<title>kthread (6,377,330 us, 0.07%)</title><rect x="418.4" y="581" width="0.8" height="15.0" fill="rgb(68,181,181)" rx="2" ry="2" />
+<text  x="421.44" y="591.5" ></text>
+</g>
+<g >
+<title>rocksdb:high0 (1,854,513,886 us, 19.37%)</title><rect x="117.4" y="1045" width="228.5" height="15.0" fill="rgb(105,105,225)" rx="2" ry="2" />
+<text  x="120.36" y="1055.5" >rocksdb:high0</text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (4,029,959 us, 0.04%)</title><rect x="417.9" y="373" width="0.5" height="15.0" fill="rgb(106,217,217)" rx="2" ry="2" />
+<text  x="420.93" y="383.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,839,475,212 us, 19.21%)</title><rect x="117.4" y="981" width="226.7" height="15.0" fill="rgb(117,117,236)" rx="2" ry="2" />
+<text  x="120.36" y="991.5" >do_syscall_64</text>
+</g>
+<g >
+<title>ret_from_intr (1,900,842 us, 0.02%)</title><rect x="982.2" y="277" width="0.3" height="15.0" fill="rgb(57,171,171)" rx="2" ry="2" />
+<text  x="985.23" y="287.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (1,380,274 us, 0.01%)</title><rect x="1116.1" y="357" width="0.1" height="15.0" fill="rgb(65,179,179)" rx="2" ry="2" />
+<text  x="1119.08" y="367.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,104,828 us, 0.12%)</title><rect x="982.2" y="933" width="1.3" height="15.0" fill="rgb(125,125,242)" rx="2" ry="2" />
+<text  x="985.16" y="943.5" ></text>
+</g>
+<g >
+<title>handle_irq_event (3,937,884 us, 0.04%)</title><rect x="655.0" y="341" width="0.5" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="657.99" y="351.5" ></text>
+</g>
+<g >
+<title>do_IRQ (1,037,769 us, 0.01%)</title><rect x="10.0" y="309" width="0.1" height="15.0" fill="rgb(103,214,214)" rx="2" ry="2" />
+<text  x="13.00" y="319.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (3,937,710 us, 0.04%)</title><rect x="655.0" y="165" width="0.5" height="15.0" fill="rgb(84,197,197)" rx="2" ry="2" />
+<text  x="657.99" y="175.5" ></text>
+</g>
+<g >
+<title>ext4_wait_block_bitmap (1,064,943 us, 0.01%)</title><rect x="10.0" y="821" width="0.1" height="15.0" fill="rgb(92,92,215)" rx="2" ry="2" />
+<text  x="13.00" y="831.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (2,372,031 us, 0.02%)</title><rect x="344.4" y="421" width="0.3" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="347.39" y="431.5" ></text>
+</g>
+<g >
+<title>wake_up_page_bit (4,029,959 us, 0.04%)</title><rect x="417.9" y="581" width="0.5" height="15.0" fill="rgb(103,213,213)" rx="2" ry="2" />
+<text  x="420.93" y="591.5" ></text>
+</g>
+<g >
+<title> (803,483,865 us, 8.39%)</title><rect x="555.9" y="789" width="99.0" height="15.0" fill="rgb(67,180,180)" rx="2" ry="2" />
+<text  x="558.91" y="799.5" ></text>
+</g>
+<g >
+<title>bio_endio (2,598,217 us, 0.03%)</title><rect x="554.8" y="517" width="0.3" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="557.75" y="527.5" ></text>
+</g>
+<g >
+<title>-- (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="885" width="124.7" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="659.44" y="895.5" >--</text>
+</g>
+<g >
+<title>[unknown] (11,375,347 us, 0.12%)</title><rect x="417.9" y="981" width="1.4" height="15.0" fill="rgb(119,119,238)" rx="2" ry="2" />
+<text  x="420.87" y="991.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (6,291,311 us, 0.07%)</title><rect x="555.1" y="661" width="0.8" height="15.0" fill="rgb(105,216,216)" rx="2" ry="2" />
+<text  x="558.08" y="671.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (869,791,475 us, 9.08%)</title><rect x="10.1" y="741" width="107.2" height="15.0" fill="rgb(67,180,180)" rx="2" ry="2" />
+<text  x="13.14" y="751.5" >cpu_startup_e..</text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (2,198,241 us, 0.02%)</title><rect x="345.7" y="485" width="0.2" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="348.66" y="495.5" ></text>
+</g>
+<g >
+<title>__wake_up_common_lock (8,160,088 us, 0.09%)</title><rect x="982.5" y="645" width="1.0" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="985.46" y="655.5" ></text>
+</g>
+<g >
+<title> (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="789" width="124.7" height="15.0" fill="rgb(102,213,213)" rx="2" ry="2" />
+<text  x="659.44" y="799.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (1,850,666 us, 0.02%)</title><rect x="1188.7" y="261" width="0.3" height="15.0" fill="rgb(78,191,191)" rx="2" ry="2" />
+<text  x="1191.72" y="271.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (1,160,398 us, 0.01%)</title><rect x="344.7" y="373" width="0.2" height="15.0" fill="rgb(51,166,166)" rx="2" ry="2" />
+<text  x="347.73" y="383.5" ></text>
+</g>
+<g >
+<title>io_schedule (1,850,864 us, 0.02%)</title><rect x="1188.7" y="693" width="0.3" height="15.0" fill="rgb(129,129,245)" rx="2" ry="2" />
+<text  x="1191.72" y="703.5" ></text>
+</g>
+<g >
+<title>kthread (6,357,601 us, 0.07%)</title><rect x="344.9" y="565" width="0.8" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="347.88" y="575.5" ></text>
+</g>
+<g >
+<title> (10,071,784 us, 0.11%)</title><rect x="982.2" y="853" width="1.3" height="15.0" fill="rgb(131,131,248)" rx="2" ry="2" />
+<text  x="985.23" y="863.5" ></text>
+</g>
+<g >
+<title>rocksdb:low2 (815,697,984 us, 8.52%)</title><rect x="555.9" y="1045" width="100.5" height="15.0" fill="rgb(128,128,245)" rx="2" ry="2" />
+<text  x="558.91" y="1055.5" >rocksdb:low2</text>
+</g>
+<g >
+<title>__wake_up_common_lock (1,037,769 us, 0.01%)</title><rect x="10.0" y="645" width="0.1" height="15.0" fill="rgb(103,213,213)" rx="2" ry="2" />
+<text  x="13.00" y="655.5" ></text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (2,372,031 us, 0.02%)</title><rect x="344.4" y="437" width="0.3" height="15.0" fill="rgb(57,172,172)" rx="2" ry="2" />
+<text  x="347.39" y="447.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (9,154,866 us, 0.10%)</title><rect x="781.1" y="837" width="1.1" height="15.0" fill="rgb(135,135,250)" rx="2" ry="2" />
+<text  x="784.11" y="847.5" ></text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (6,357,601 us, 0.07%)</title><rect x="344.9" y="517" width="0.8" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="347.88" y="527.5" ></text>
+</g>
+<g >
+<title>do_futex (869,862,728 us, 9.09%)</title><rect x="10.1" y="965" width="107.2" height="15.0" fill="rgb(84,84,208)" rx="2" ry="2" />
+<text  x="13.13" y="975.5" >do_futex</text>
+</g>
+<g >
+<title>sys_fdatasync (11,263,682 us, 0.12%)</title><rect x="655.0" y="805" width="1.4" height="15.0" fill="rgb(123,123,240)" rx="2" ry="2" />
+<text  x="657.99" y="815.5" ></text>
+</g>
+<g >
+<title>__wake_up_common_lock (6,357,601 us, 0.07%)</title><rect x="344.9" y="629" width="0.8" height="15.0" fill="rgb(54,169,169)" rx="2" ry="2" />
+<text  x="347.88" y="639.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (9,154,849 us, 0.10%)</title><rect x="781.1" y="757" width="1.1" height="15.0" fill="rgb(128,128,245)" rx="2" ry="2" />
+<text  x="784.11" y="767.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter (3,304,144 us, 0.03%)</title><rect x="781.1" y="245" width="0.4" height="15.0" fill="rgb(84,197,197)" rx="2" ry="2" />
+<text  x="784.11" y="255.5" ></text>
+</g>
+<g >
+<title> (667,287,007 us, 6.97%)</title><rect x="899.9" y="1013" width="82.3" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="902.92" y="1023.5" ></text>
+</g>
+<g >
+<title>wake_page_function (1,380,274 us, 0.01%)</title><rect x="1116.1" y="629" width="0.1" height="15.0" fill="rgb(77,190,190)" rx="2" ry="2" />
+<text  x="1119.08" y="639.5" ></text>
+</g>
+<g >
+<title>rocksdb:low0 (144,215,840 us, 1.51%)</title><rect x="1005.4" y="773" width="17.8" height="15.0" fill="rgb(102,213,213)" rx="2" ry="2" />
+<text  x="1008.39" y="783.5" ></text>
+</g>
+<g >
+<title>do_fsync (2,207,071 us, 0.02%)</title><rect x="345.7" y="741" width="0.2" height="15.0" fill="rgb(124,124,241)" rx="2" ry="2" />
+<text  x="348.66" y="751.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,918,995 us, 0.10%)</title><rect x="781.1" y="933" width="1.2" height="15.0" fill="rgb(86,86,210)" rx="2" ry="2" />
+<text  x="784.06" y="943.5" ></text>
+</g>
+<g >
+<title>sys_futex (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="837" width="124.7" height="15.0" fill="rgb(102,213,213)" rx="2" ry="2" />
+<text  x="659.44" y="847.5" >sys_futex</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (954,444,847 us, 9.97%)</title><rect x="782.3" y="805" width="117.6" height="15.0" fill="rgb(83,195,195)" rx="2" ry="2" />
+<text  x="785.29" y="815.5" >entry_SYSCALL_..</text>
+</g>
+<g >
+<title>cpu_startup_entry (4,029,424 us, 0.04%)</title><rect x="417.9" y="197" width="0.5" height="15.0" fill="rgb(89,200,200)" rx="2" ry="2" />
+<text  x="420.93" y="207.5" ></text>
+</g>
+<g >
+<title>do_fsync (10,325,678 us, 0.11%)</title><rect x="344.4" y="773" width="1.3" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="347.39" y="783.5" ></text>
+</g>
+<g >
+<title>ret_from_fork (6,357,601 us, 0.07%)</title><rect x="344.9" y="549" width="0.8" height="15.0" fill="rgb(103,214,214)" rx="2" ry="2" />
+<text  x="347.88" y="559.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (10,325,694 us, 0.11%)</title><rect x="344.4" y="805" width="1.3" height="15.0" fill="rgb(130,130,247)" rx="2" ry="2" />
+<text  x="347.39" y="815.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter (869,791,475 us, 9.08%)</title><rect x="10.1" y="789" width="107.2" height="15.0" fill="rgb(84,196,196)" rx="2" ry="2" />
+<text  x="13.14" y="799.5" >cpuidle_enter</text>
+</g>
+<g >
+<title>ret_from_fork (2,424,459 us, 0.03%)</title><rect x="344.1" y="565" width="0.3" height="15.0" fill="rgb(106,217,217)" rx="2" ry="2" />
+<text  x="347.08" y="575.5" ></text>
+</g>
+<g >
+<title> (869,791,475 us, 9.08%)</title><rect x="10.1" y="693" width="107.2" height="15.0" fill="rgb(69,183,183)" rx="2" ry="2" />
+<text  x="13.14" y="703.5" ></text>
+</g>
+<g >
+<title>[unknown] (15,033,502 us, 0.16%)</title><rect x="344.1" y="949" width="1.8" height="15.0" fill="rgb(104,104,225)" rx="2" ry="2" />
+<text  x="347.08" y="959.5" ></text>
+</g>
+<g >
+<title>ret_from_intr (1,850,852 us, 0.02%)</title><rect x="1188.7" y="277" width="0.3" height="15.0" fill="rgb(99,210,210)" rx="2" ry="2" />
+<text  x="1191.72" y="287.5" ></text>
+</g>
+<g >
+<title> (1,160,398 us, 0.01%)</title><rect x="344.7" y="37" width="0.2" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="347.73" y="47.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (10,487,439 us, 0.11%)</title><rect x="417.9" y="757" width="1.3" height="15.0" fill="rgb(126,126,243)" rx="2" ry="2" />
+<text  x="420.93" y="767.5" ></text>
+</g>
+<g >
+<title>__wake_up_locked_key_bookmark (4,029,959 us, 0.04%)</title><rect x="417.9" y="597" width="0.5" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="420.93" y="607.5" ></text>
+</g>
+<g >
+<title>rocksdb:low7 (162,228,672 us, 1.69%)</title><rect x="879.9" y="773" width="20.0" height="15.0" fill="rgb(103,213,213)" rx="2" ry="2" />
+<text  x="882.93" y="783.5" ></text>
+</g>
+<g >
+<title>end_page_writeback (4,029,959 us, 0.04%)</title><rect x="417.9" y="565" width="0.5" height="15.0" fill="rgb(77,190,190)" rx="2" ry="2" />
+<text  x="420.93" y="575.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (954,444,856 us, 9.97%)</title><rect x="782.3" y="981" width="117.6" height="15.0" fill="rgb(126,126,244)" rx="2" ry="2" />
+<text  x="785.29" y="991.5" >do_syscall_64</text>
+</g>
+<g >
+<title>do_futex (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="949" width="135.4" height="15.0" fill="rgb(87,87,211)" rx="2" ry="2" />
+<text  x="422.28" y="959.5" >do_futex</text>
+</g>
+<g >
+<title>handle_irq_event (1,380,274 us, 0.01%)</title><rect x="1116.1" y="341" width="0.1" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="1119.08" y="351.5" ></text>
+</g>
+<g >
+<title> (9,155,005 us, 0.10%)</title><rect x="781.1" y="853" width="1.1" height="15.0" fill="rgb(120,120,238)" rx="2" ry="2" />
+<text  x="784.11" y="863.5" ></text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (1,380,274 us, 0.01%)</title><rect x="1116.1" y="373" width="0.1" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="1119.08" y="383.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (10,548,983 us, 0.11%)</title><rect x="1116.1" y="837" width="1.3" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="1119.08" y="847.5" ></text>
+</g>
+<g >
+<title> (4,029,424 us, 0.04%)</title><rect x="417.9" y="149" width="0.5" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="420.93" y="159.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (4,029,959 us, 0.04%)</title><rect x="417.9" y="645" width="0.5" height="15.0" fill="rgb(97,208,208)" rx="2" ry="2" />
+<text  x="420.93" y="655.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (1,037,769 us, 0.01%)</title><rect x="10.0" y="181" width="0.1" height="15.0" fill="rgb(90,202,202)" rx="2" ry="2" />
+<text  x="13.00" y="191.5" ></text>
+</g>
+<g >
+<title>sys_fdatasync (2,207,071 us, 0.02%)</title><rect x="345.7" y="757" width="0.2" height="15.0" fill="rgb(107,107,227)" rx="2" ry="2" />
+<text  x="348.66" y="767.5" ></text>
+</g>
+<g >
+<title>schedule (5,759,936 us, 0.06%)</title><rect x="781.5" y="709" width="0.7" height="15.0" fill="rgb(107,107,228)" rx="2" ry="2" />
+<text  x="784.53" y="719.5" ></text>
+</g>
+<g >
+<title>do_IRQ (2,598,217 us, 0.03%)</title><rect x="554.8" y="293" width="0.3" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="557.75" y="303.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (2,207,071 us, 0.02%)</title><rect x="345.7" y="725" width="0.2" height="15.0" fill="rgb(125,125,242)" rx="2" ry="2" />
+<text  x="348.66" y="735.5" ></text>
+</g>
+<g >
+<title>rocksdb:low0 (144,423,685 us, 1.51%)</title><rect x="450.6" y="773" width="17.8" height="15.0" fill="rgb(57,172,172)" rx="2" ry="2" />
+<text  x="453.58" y="783.5" ></text>
+</g>
+<g >
+<title>handle_irq (1,380,274 us, 0.01%)</title><rect x="1116.1" y="309" width="0.1" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="1119.08" y="319.5" ></text>
+</g>
+<g >
+<title>handle_irq_event (1,850,852 us, 0.02%)</title><rect x="1188.7" y="341" width="0.3" height="15.0" fill="rgb(55,169,169)" rx="2" ry="2" />
+<text  x="1191.72" y="351.5" ></text>
+</g>
+<g >
+<title>wake_page_function (3,304,210 us, 0.03%)</title><rect x="781.1" y="629" width="0.4" height="15.0" fill="rgb(81,193,193)" rx="2" ry="2" />
+<text  x="784.11" y="639.5" ></text>
+</g>
+<g >
+<title> (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="789" width="135.4" height="15.0" fill="rgb(105,215,215)" rx="2" ry="2" />
+<text  x="422.28" y="799.5" ></text>
+</g>
+<g >
+<title>__filemap_fdatawait_range (1,850,864 us, 0.02%)</title><rect x="1188.7" y="725" width="0.3" height="15.0" fill="rgb(88,88,211)" rx="2" ry="2" />
+<text  x="1191.72" y="735.5" ></text>
+</g>
+<g >
+<title>rocksdb:low3 (109,036,557 us, 1.14%)</title><rect x="1175.2" y="773" width="13.5" height="15.0" fill="rgb(78,191,191)" rx="2" ry="2" />
+<text  x="1178.22" y="783.5" ></text>
+</g>
+<g >
+<title>do_futex (667,286,698 us, 6.97%)</title><rect x="899.9" y="949" width="82.3" height="15.0" fill="rgb(93,93,215)" rx="2" ry="2" />
+<text  x="902.92" y="959.5" >do_futex</text>
+</g>
+<g >
+<title>cpuidle_enter_state (1,160,398 us, 0.01%)</title><rect x="344.7" y="149" width="0.2" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="347.73" y="159.5" ></text>
+</g>
+<g >
+<title>kjournald2 (9,158,102 us, 0.10%)</title><rect x="1116.2" y="597" width="1.2" height="15.0" fill="rgb(108,218,218)" rx="2" ry="2" />
+<text  x="1119.25" y="607.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,813,067 us, 0.10%)</title><rect x="554.7" y="997" width="1.2" height="15.0" fill="rgb(139,139,254)" rx="2" ry="2" />
+<text  x="557.70" y="1007.5" ></text>
+</g>
+<g >
+<title>schedule (667,286,698 us, 6.97%)</title><rect x="899.9" y="901" width="82.3" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="902.92" y="911.5" >schedule</text>
+</g>
+<g >
+<title>file_write_and_wait_range (3,394,909 us, 0.04%)</title><rect x="781.1" y="741" width="0.4" height="15.0" fill="rgb(86,86,210)" rx="2" ry="2" />
+<text  x="784.11" y="751.5" ></text>
+</g>
+<g >
+<title>futex_wake (667,286,698 us, 6.97%)</title><rect x="899.9" y="869" width="82.3" height="15.0" fill="rgb(53,168,168)" rx="2" ry="2" />
+<text  x="902.92" y="879.5" >futex_wake</text>
+</g>
+<g >
+<title>swapper/32 (954,702 us, 0.01%)</title><rect x="781.4" y="133" width="0.1" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="784.40" y="143.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,867,309 us, 0.11%)</title><rect x="1188.7" y="965" width="1.3" height="15.0" fill="rgb(94,94,217)" rx="2" ry="2" />
+<text  x="1191.66" y="975.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (3,304,144 us, 0.03%)</title><rect x="781.1" y="261" width="0.4" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="784.11" y="271.5" ></text>
+</g>
+<g >
+<title>blk_mq_complete_request (4,029,959 us, 0.04%)</title><rect x="417.9" y="421" width="0.5" height="15.0" fill="rgb(71,184,184)" rx="2" ry="2" />
+<text  x="420.93" y="431.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="805" width="135.4" height="15.0" fill="rgb(57,171,171)" rx="2" ry="2" />
+<text  x="422.28" y="815.5" >entry_SYSCALL_64_..</text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (1,900,842 us, 0.02%)</title><rect x="982.2" y="453" width="0.3" height="15.0" fill="rgb(88,199,199)" rx="2" ry="2" />
+<text  x="985.23" y="463.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (4,029,424 us, 0.04%)</title><rect x="417.9" y="165" width="0.5" height="15.0" fill="rgb(80,192,192)" rx="2" ry="2" />
+<text  x="420.93" y="175.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (2,598,217 us, 0.03%)</title><rect x="554.8" y="485" width="0.3" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="557.75" y="495.5" ></text>
+</g>
+<g >
+<title>ext4_finish_bio (1,900,842 us, 0.02%)</title><rect x="982.2" y="549" width="0.3" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="985.23" y="559.5" ></text>
+</g>
+<g >
+<title>ext4_finish_bio (2,598,217 us, 0.03%)</title><rect x="554.8" y="549" width="0.3" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="557.75" y="559.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (11,263,682 us, 0.12%)</title><rect x="655.0" y="757" width="1.4" height="15.0" fill="rgb(103,103,224)" rx="2" ry="2" />
+<text  x="657.99" y="767.5" ></text>
+</g>
+<g >
+<title>handle_irq (3,937,884 us, 0.04%)</title><rect x="655.0" y="309" width="0.5" height="15.0" fill="rgb(77,190,190)" rx="2" ry="2" />
+<text  x="657.99" y="319.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (1,850,666 us, 0.02%)</title><rect x="1188.7" y="165" width="0.3" height="15.0" fill="rgb(63,177,177)" rx="2" ry="2" />
+<text  x="1191.72" y="175.5" ></text>
+</g>
+<g >
+<title>start_secondary (4,029,424 us, 0.04%)</title><rect x="417.9" y="181" width="0.5" height="15.0" fill="rgb(60,174,174)" rx="2" ry="2" />
+<text  x="420.93" y="191.5" ></text>
+</g>
+<g >
+<title>submit_bio (1,160,469 us, 0.01%)</title><rect x="344.7" y="597" width="0.2" height="15.0" fill="rgb(90,90,213)" rx="2" ry="2" />
+<text  x="347.73" y="607.5" ></text>
+</g>
+<g >
+<title>wake_bit_function (1,037,769 us, 0.01%)</title><rect x="10.0" y="677" width="0.1" height="15.0" fill="rgb(82,194,194)" rx="2" ry="2" />
+<text  x="13.00" y="687.5" ></text>
+</g>
+<g >
+<title> (11,263,747 us, 0.12%)</title><rect x="655.0" y="853" width="1.4" height="15.0" fill="rgb(122,122,240)" rx="2" ry="2" />
+<text  x="657.99" y="863.5" ></text>
+</g>
+<g >
+<title>blk_mq_complete_request (1,380,274 us, 0.01%)</title><rect x="1116.1" y="421" width="0.1" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="1119.08" y="431.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (7,999,127 us, 0.08%)</title><rect x="1189.0" y="725" width="0.9" height="15.0" fill="rgb(92,92,215)" rx="2" ry="2" />
+<text  x="1191.96" y="735.5" ></text>
+</g>
+<g >
+<title> (577,809,533 us, 6.04%)</title><rect x="1117.4" y="789" width="71.3" height="15.0" fill="rgb(56,171,171)" rx="2" ry="2" />
+<text  x="1120.45" y="799.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (1,850,852 us, 0.02%)</title><rect x="1188.7" y="645" width="0.3" height="15.0" fill="rgb(81,193,193)" rx="2" ry="2" />
+<text  x="1191.72" y="655.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (1,900,842 us, 0.02%)</title><rect x="982.2" y="613" width="0.3" height="15.0" fill="rgb(83,196,196)" rx="2" ry="2" />
+<text  x="985.23" y="623.5" ></text>
+</g>
+<g >
+<title>io_schedule (3,304,717 us, 0.03%)</title><rect x="781.1" y="693" width="0.4" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="784.11" y="703.5" ></text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (1,900,842 us, 0.02%)</title><rect x="982.2" y="373" width="0.3" height="15.0" fill="rgb(67,180,180)" rx="2" ry="2" />
+<text  x="985.23" y="383.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="821" width="135.4" height="15.0" fill="rgb(64,177,177)" rx="2" ry="2" />
+<text  x="422.28" y="831.5" >do_syscall_64</text>
+</g>
+<g >
+<title>rocksdb:low7 (136,622,980 us, 1.43%)</title><rect x="1099.2" y="773" width="16.8" height="15.0" fill="rgb(67,180,180)" rx="2" ry="2" />
+<text  x="1102.17" y="783.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (6,291,311 us, 0.07%)</title><rect x="555.1" y="613" width="0.8" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="558.08" y="623.5" ></text>
+</g>
+<g >
+<title>wait_on_page_bit_common (1,900,842 us, 0.02%)</title><rect x="982.2" y="709" width="0.3" height="15.0" fill="rgb(104,104,225)" rx="2" ry="2" />
+<text  x="985.23" y="719.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,093,503 us, 0.12%)</title><rect x="1116.1" y="901" width="1.3" height="15.0" fill="rgb(81,81,206)" rx="2" ry="2" />
+<text  x="1119.08" y="911.5" ></text>
+</g>
+<g >
+<title>rocksdb:low3 (1,021,075,494 us, 10.66%)</title><rect x="656.4" y="1045" width="125.9" height="15.0" fill="rgb(107,107,227)" rx="2" ry="2" />
+<text  x="659.44" y="1055.5" >rocksdb:low3</text>
+</g>
+<g >
+<title>-- (1,900,842 us, 0.02%)</title><rect x="982.2" y="661" width="0.3" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="985.23" y="671.5" ></text>
+</g>
+<g >
+<title>wake_page_function (2,372,031 us, 0.02%)</title><rect x="344.4" y="613" width="0.3" height="15.0" fill="rgb(71,184,184)" rx="2" ry="2" />
+<text  x="347.39" y="623.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (4,029,959 us, 0.04%)</title><rect x="417.9" y="485" width="0.5" height="15.0" fill="rgb(77,189,189)" rx="2" ry="2" />
+<text  x="420.93" y="495.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (10,071,755 us, 0.11%)</title><rect x="982.2" y="821" width="1.3" height="15.0" fill="rgb(139,139,254)" rx="2" ry="2" />
+<text  x="985.23" y="831.5" ></text>
+</g>
+<g >
+<title>rocksdb:low3 (214,774,986 us, 2.24%)</title><rect x="1052.0" y="773" width="26.4" height="15.0" fill="rgb(90,202,202)" rx="2" ry="2" />
+<text  x="1054.97" y="783.5" >r..</text>
+</g>
+<g >
+<title>[unknown] (11,375,327 us, 0.12%)</title><rect x="417.9" y="965" width="1.4" height="15.0" fill="rgb(134,134,250)" rx="2" ry="2" />
+<text  x="420.87" y="975.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,108,528,443 us, 11.58%)</title><rect x="419.3" y="1029" width="136.6" height="15.0" fill="rgb(125,125,242)" rx="2" ry="2" />
+<text  x="422.28" y="1039.5" >[unknown]</text>
+</g>
+<g >
+<title>ext4_mb_new_blocks (1,064,943 us, 0.01%)</title><rect x="10.0" y="885" width="0.1" height="15.0" fill="rgb(81,81,206)" rx="2" ry="2" />
+<text  x="13.00" y="895.5" ></text>
+</g>
+<g >
+<title>__wake_up_common_lock (2,424,459 us, 0.03%)</title><rect x="344.1" y="645" width="0.3" height="15.0" fill="rgb(108,218,218)" rx="2" ry="2" />
+<text  x="347.08" y="655.5" ></text>
+</g>
+<g >
+<title>rocksdb:low0 (89,209,964 us, 0.93%)</title><rect x="917.8" y="773" width="11.0" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="920.81" y="783.5" ></text>
+</g>
+<g >
+<title>do_fsync (9,154,849 us, 0.10%)</title><rect x="781.1" y="789" width="1.1" height="15.0" fill="rgb(92,92,215)" rx="2" ry="2" />
+<text  x="784.11" y="799.5" ></text>
+</g>
+<g >
+<title>futex_wake (803,483,865 us, 8.39%)</title><rect x="555.9" y="869" width="99.0" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="558.91" y="879.5" >futex_wake</text>
+</g>
+<g >
+<title>sys_fdatasync (10,071,740 us, 0.11%)</title><rect x="982.2" y="805" width="1.3" height="15.0" fill="rgb(110,110,230)" rx="2" ry="2" />
+<text  x="985.23" y="815.5" ></text>
+</g>
+<g >
+<title> (954,444,847 us, 9.97%)</title><rect x="782.3" y="789" width="117.6" height="15.0" fill="rgb(54,169,169)" rx="2" ry="2" />
+<text  x="785.29" y="799.5" ></text>
+</g>
+<g >
+<title>do_idle (1,037,769 us, 0.01%)</title><rect x="10.0" y="229" width="0.1" height="15.0" fill="rgb(84,196,196)" rx="2" ry="2" />
+<text  x="13.00" y="239.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (2,207,077 us, 0.02%)</title><rect x="345.7" y="773" width="0.2" height="15.0" fill="rgb(123,123,241)" rx="2" ry="2" />
+<text  x="348.66" y="783.5" ></text>
+</g>
+<g >
+<title>schedule (3,937,884 us, 0.04%)</title><rect x="655.0" y="677" width="0.5" height="15.0" fill="rgb(130,130,247)" rx="2" ry="2" />
+<text  x="657.99" y="687.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (5,759,902 us, 0.06%)</title><rect x="781.5" y="677" width="0.7" height="15.0" fill="rgb(70,184,184)" rx="2" ry="2" />
+<text  x="784.53" y="687.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,104,874 us, 0.12%)</title><rect x="982.2" y="965" width="1.3" height="15.0" fill="rgb(106,106,227)" rx="2" ry="2" />
+<text  x="985.16" y="975.5" ></text>
+</g>
+<g >
+<title>ext4_finish_bio (3,937,884 us, 0.04%)</title><rect x="655.0" y="549" width="0.5" height="15.0" fill="rgb(88,200,200)" rx="2" ry="2" />
+<text  x="657.99" y="559.5" ></text>
+</g>
+<g >
+<title>nvme_process_cq (1,380,274 us, 0.01%)</title><rect x="1116.1" y="405" width="0.1" height="15.0" fill="rgb(104,214,214)" rx="2" ry="2" />
+<text  x="1119.08" y="415.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (803,483,865 us, 8.39%)</title><rect x="555.9" y="821" width="99.0" height="15.0" fill="rgb(68,182,182)" rx="2" ry="2" />
+<text  x="558.91" y="831.5" >do_syscall_64</text>
+</g>
+<g >
+<title>secondary_startup_64 (1,900,753 us, 0.02%)</title><rect x="982.2" y="165" width="0.3" height="15.0" fill="rgb(57,172,172)" rx="2" ry="2" />
+<text  x="985.23" y="175.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (1,037,769 us, 0.01%)</title><rect x="10.0" y="373" width="0.1" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="13.00" y="383.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (11,263,682 us, 0.12%)</title><rect x="655.0" y="773" width="1.4" height="15.0" fill="rgb(119,119,238)" rx="2" ry="2" />
+<text  x="657.99" y="783.5" ></text>
+</g>
+<g >
+<title> (1,074,850,233 us, 11.23%)</title><rect x="983.5" y="789" width="132.5" height="15.0" fill="rgb(72,185,185)" rx="2" ry="2" />
+<text  x="986.53" y="799.5" ></text>
+</g>
+<g >
+<title>blk_update_request (2,372,031 us, 0.02%)</title><rect x="344.4" y="485" width="0.3" height="15.0" fill="rgb(83,195,195)" rx="2" ry="2" />
+<text  x="347.39" y="495.5" ></text>
+</g>
+<g >
+<title>do_futex (583,703,258 us, 6.10%)</title><rect x="345.9" y="853" width="72.0" height="15.0" fill="rgb(56,171,171)" rx="2" ry="2" />
+<text  x="348.93" y="863.5" >do_futex</text>
+</g>
+<g >
+<title>sys_fdatasync (9,154,849 us, 0.10%)</title><rect x="781.1" y="805" width="1.1" height="15.0" fill="rgb(131,131,247)" rx="2" ry="2" />
+<text  x="784.11" y="815.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (2,598,038 us, 0.03%)</title><rect x="554.8" y="261" width="0.3" height="15.0" fill="rgb(60,174,174)" rx="2" ry="2" />
+<text  x="557.75" y="271.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (1,037,769 us, 0.01%)</title><rect x="10.0" y="277" width="0.1" height="15.0" fill="rgb(77,189,189)" rx="2" ry="2" />
+<text  x="13.00" y="287.5" ></text>
+</g>
+<g >
+<title>-- (1,074,850,242 us, 11.23%)</title><rect x="983.5" y="885" width="132.5" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="986.53" y="895.5" >--</text>
+</g>
+<g >
+<title>rocksdb:low3 (197,458,769 us, 2.06%)</title><rect x="484.3" y="773" width="24.3" height="15.0" fill="rgb(90,202,202)" rx="2" ry="2" />
+<text  x="487.31" y="783.5" >r..</text>
+</g>
+<g >
+<title>[unknown] (678,391,891 us, 7.09%)</title><rect x="899.9" y="1029" width="83.6" height="15.0" fill="rgb(108,108,228)" rx="2" ry="2" />
+<text  x="902.92" y="1039.5" >[unknown]</text>
+</g>
+<g >
+<title>futex_wait_queue_me (667,286,698 us, 6.97%)</title><rect x="899.9" y="917" width="82.3" height="15.0" fill="rgb(101,101,222)" rx="2" ry="2" />
+<text  x="902.92" y="927.5" >futex_wai..</text>
+</g>
+<g >
+<title>__filemap_fdatawait_range (2,598,219 us, 0.03%)</title><rect x="554.8" y="725" width="0.3" height="15.0" fill="rgb(81,81,205)" rx="2" ry="2" />
+<text  x="557.75" y="735.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (2,424,459 us, 0.03%)</title><rect x="344.1" y="725" width="0.3" height="15.0" fill="rgb(118,118,236)" rx="2" ry="2" />
+<text  x="347.08" y="735.5" ></text>
+</g>
+<g >
+<title>__hrtimer_run_queues (869,791,475 us, 9.08%)</title><rect x="10.1" y="869" width="107.2" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="13.14" y="879.5" >__hrtimer_run..</text>
+</g>
+<g >
+<title>-- (577,809,542 us, 6.04%)</title><rect x="1117.4" y="885" width="71.3" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="1120.45" y="895.5" >--</text>
+</g>
+<g >
+<title>wake_up_page_bit (3,304,210 us, 0.03%)</title><rect x="781.1" y="581" width="0.4" height="15.0" fill="rgb(65,179,179)" rx="2" ry="2" />
+<text  x="784.11" y="591.5" ></text>
+</g>
+<g >
+<title>ext4_finish_bio (3,304,210 us, 0.03%)</title><rect x="781.1" y="549" width="0.4" height="15.0" fill="rgb(89,201,201)" rx="2" ry="2" />
+<text  x="784.11" y="559.5" ></text>
+</g>
+<g >
+<title>[unknown] (15,033,542 us, 0.16%)</title><rect x="344.1" y="965" width="1.8" height="15.0" fill="rgb(107,107,227)" rx="2" ry="2" />
+<text  x="347.08" y="975.5" ></text>
+</g>
+<g >
+<title>wbt_rqw_done.isra.22 (1,160,398 us, 0.01%)</title><rect x="344.7" y="421" width="0.2" height="15.0" fill="rgb(51,166,166)" rx="2" ry="2" />
+<text  x="347.73" y="431.5" ></text>
+</g>
+<g >
+<title>rocksdb:high0 (221,635,785 us, 2.31%)</title><rect x="555.9" y="773" width="27.3" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="558.91" y="783.5" >r..</text>
+</g>
+<g >
+<title> (1,037,769 us, 0.01%)</title><rect x="10.0" y="165" width="0.1" height="15.0" fill="rgb(102,212,212)" rx="2" ry="2" />
+<text  x="13.00" y="175.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,559,040 us, 0.10%)</title><rect x="781.1" y="901" width="1.2" height="15.0" fill="rgb(84,84,208)" rx="2" ry="2" />
+<text  x="784.11" y="911.5" ></text>
+</g>
+<g >
+<title>[unknown] (12,185,039 us, 0.13%)</title><rect x="654.9" y="981" width="1.5" height="15.0" fill="rgb(87,87,211)" rx="2" ry="2" />
+<text  x="657.94" y="991.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_force_commit (2,424,459 us, 0.03%)</title><rect x="344.1" y="757" width="0.3" height="15.0" fill="rgb(81,81,206)" rx="2" ry="2" />
+<text  x="347.08" y="767.5" ></text>
+</g>
+<g >
+<title>rocksdb:high0 (264,443,240 us, 2.76%)</title><rect x="656.4" y="773" width="32.6" height="15.0" fill="rgb(108,219,219)" rx="2" ry="2" />
+<text  x="659.44" y="783.5" >ro..</text>
+</g>
+<g >
+<title>[unknown] (10,397,013 us, 0.11%)</title><rect x="1188.7" y="901" width="1.3" height="15.0" fill="rgb(121,121,239)" rx="2" ry="2" />
+<text  x="1191.72" y="911.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter (2,371,603 us, 0.02%)</title><rect x="344.4" y="229" width="0.3" height="15.0" fill="rgb(57,171,171)" rx="2" ry="2" />
+<text  x="347.39" y="239.5" ></text>
+</g>
+<g >
+<title>ext4_finish_bio (1,850,852 us, 0.02%)</title><rect x="1188.7" y="549" width="0.3" height="15.0" fill="rgb(96,208,208)" rx="2" ry="2" />
+<text  x="1191.72" y="559.5" ></text>
+</g>
+<g >
+<title>io_schedule (1,900,842 us, 0.02%)</title><rect x="982.2" y="693" width="0.3" height="15.0" fill="rgb(117,117,236)" rx="2" ry="2" />
+<text  x="985.23" y="703.5" ></text>
+</g>
+<g >
+<title> (870,929,860 us, 9.10%)</title><rect x="10.0" y="1029" width="107.3" height="15.0" fill="rgb(102,102,223)" rx="2" ry="2" />
+<text  x="13.00" y="1039.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (6,357,601 us, 0.07%)</title><rect x="344.9" y="597" width="0.8" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="347.88" y="607.5" ></text>
+</g>
+<g >
+<title>sys_fdatasync (10,548,980 us, 0.11%)</title><rect x="1116.1" y="805" width="1.3" height="15.0" fill="rgb(137,137,252)" rx="2" ry="2" />
+<text  x="1119.08" y="815.5" ></text>
+</g>
+<g >
+<title>__wake_up_common_lock (6,377,330 us, 0.07%)</title><rect x="418.4" y="645" width="0.8" height="15.0" fill="rgb(59,173,173)" rx="2" ry="2" />
+<text  x="421.44" y="655.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (8,160,102 us, 0.09%)</title><rect x="982.5" y="725" width="1.0" height="15.0" fill="rgb(83,83,208)" rx="2" ry="2" />
+<text  x="985.46" y="735.5" ></text>
+</g>
+<g >
+<title>ret_from_intr (1,160,398 us, 0.01%)</title><rect x="344.7" y="165" width="0.2" height="15.0" fill="rgb(64,178,178)" rx="2" ry="2" />
+<text  x="347.73" y="175.5" ></text>
+</g>
+<g >
+<title>-- (3,937,884 us, 0.04%)</title><rect x="655.0" y="661" width="0.5" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="657.99" y="671.5" ></text>
+</g>
+<g >
+<title>do_idle (3,937,710 us, 0.04%)</title><rect x="655.0" y="213" width="0.5" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="657.99" y="223.5" ></text>
+</g>
+<g >
+<title>sys_fallocate (1,064,943 us, 0.01%)</title><rect x="10.0" y="981" width="0.1" height="15.0" fill="rgb(139,139,254)" rx="2" ry="2" />
+<text  x="13.00" y="991.5" ></text>
+</g>
+<g >
+<title>blk_update_request (3,937,884 us, 0.04%)</title><rect x="655.0" y="501" width="0.5" height="15.0" fill="rgb(72,185,185)" rx="2" ry="2" />
+<text  x="657.99" y="511.5" ></text>
+</g>
+<g >
+<title>[unknown] (595,080,082 us, 6.22%)</title><rect x="345.9" y="1029" width="73.4" height="15.0" fill="rgb(99,99,221)" rx="2" ry="2" />
+<text  x="348.93" y="1039.5" >[unknown]</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (583,703,258 us, 6.10%)</title><rect x="345.9" y="805" width="72.0" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="348.93" y="815.5" >entry_SY..</text>
+</g>
+<g >
+<title>sys_fdatasync (9,892,321 us, 0.10%)</title><rect x="1188.7" y="805" width="1.2" height="15.0" fill="rgb(96,96,218)" rx="2" ry="2" />
+<text  x="1191.72" y="815.5" ></text>
+</g>
+<g >
+<title>end_page_writeback (1,900,842 us, 0.02%)</title><rect x="982.2" y="565" width="0.3" height="15.0" fill="rgb(81,194,194)" rx="2" ry="2" />
+<text  x="985.23" y="575.5" ></text>
+</g>
+<g >
+<title>__wake_up_locked_key_bookmark (3,304,210 us, 0.03%)</title><rect x="781.1" y="597" width="0.4" height="15.0" fill="rgb(93,204,204)" rx="2" ry="2" />
+<text  x="784.11" y="607.5" ></text>
+</g>
+<g >
+<title>nvme_irq (1,900,842 us, 0.02%)</title><rect x="982.2" y="389" width="0.3" height="15.0" fill="rgb(58,172,172)" rx="2" ry="2" />
+<text  x="985.23" y="399.5" ></text>
+</g>
+<g >
+<title>bio_endio (1,900,842 us, 0.02%)</title><rect x="982.2" y="517" width="0.3" height="15.0" fill="rgb(99,210,210)" rx="2" ry="2" />
+<text  x="985.23" y="527.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (7,999,101 us, 0.08%)</title><rect x="1189.0" y="613" width="0.9" height="15.0" fill="rgb(109,219,219)" rx="2" ry="2" />
+<text  x="1191.96" y="623.5" ></text>
+</g>
+<g >
+<title>__wake_up (8,160,088 us, 0.09%)</title><rect x="982.5" y="629" width="1.0" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="985.46" y="639.5" ></text>
+</g>
+<g >
+<title>do_fsync (8,972,943 us, 0.09%)</title><rect x="554.8" y="789" width="1.1" height="15.0" fill="rgb(120,120,238)" rx="2" ry="2" />
+<text  x="557.75" y="799.5" ></text>
+</g>
+<g >
+<title>do_fsync (9,892,321 us, 0.10%)</title><rect x="1188.7" y="789" width="1.2" height="15.0" fill="rgb(101,101,223)" rx="2" ry="2" />
+<text  x="1191.72" y="799.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (1,160,398 us, 0.01%)</title><rect x="344.7" y="325" width="0.2" height="15.0" fill="rgb(95,207,207)" rx="2" ry="2" />
+<text  x="347.73" y="335.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,021,058,472 us, 10.66%)</title><rect x="656.4" y="1029" width="125.9" height="15.0" fill="rgb(116,116,235)" rx="2" ry="2" />
+<text  x="659.44" y="1039.5" >[unknown]</text>
+</g>
+<g >
+<title>do_syscall_64 (583,703,711 us, 6.10%)</title><rect x="345.9" y="981" width="72.0" height="15.0" fill="rgb(131,131,247)" rx="2" ry="2" />
+<text  x="348.93" y="991.5" >do_sysca..</text>
+</g>
+<g >
+<title>schedule (7,999,127 us, 0.08%)</title><rect x="1189.0" y="709" width="0.9" height="15.0" fill="rgb(104,104,225)" rx="2" ry="2" />
+<text  x="1191.96" y="719.5" ></text>
+</g>
+<g >
+<title>vfs_fallocate (1,064,943 us, 0.01%)</title><rect x="10.0" y="965" width="0.1" height="15.0" fill="rgb(106,106,227)" rx="2" ry="2" />
+<text  x="13.00" y="975.5" ></text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (6,291,311 us, 0.07%)</title><rect x="555.1" y="533" width="0.8" height="15.0" fill="rgb(57,172,172)" rx="2" ry="2" />
+<text  x="558.08" y="543.5" ></text>
+</g>
+<g >
+<title>call_cpuidle (1,900,753 us, 0.02%)</title><rect x="982.2" y="229" width="0.3" height="15.0" fill="rgb(77,190,190)" rx="2" ry="2" />
+<text  x="985.23" y="239.5" ></text>
+</g>
+<g >
+<title>rocksdb:low6 (147,225,763 us, 1.54%)</title><rect x="954.3" y="773" width="18.1" height="15.0" fill="rgb(109,219,219)" rx="2" ry="2" />
+<text  x="957.27" y="783.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (1,160,398 us, 0.01%)</title><rect x="344.7" y="469" width="0.2" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="347.73" y="479.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (954,444,847 us, 9.97%)</title><rect x="782.3" y="821" width="117.6" height="15.0" fill="rgb(105,216,216)" rx="2" ry="2" />
+<text  x="785.29" y="831.5" >do_syscall_64</text>
+</g>
+<g >
+<title>hrtimer_interrupt (869,791,475 us, 9.08%)</title><rect x="10.1" y="853" width="107.2" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="13.14" y="863.5" >hrtimer_inter..</text>
+</g>
+<g >
+<title>ret_from_fork (9,158,102 us, 0.10%)</title><rect x="1116.2" y="565" width="1.2" height="15.0" fill="rgb(97,208,208)" rx="2" ry="2" />
+<text  x="1119.25" y="575.5" ></text>
+</g>
+<g >
+<title>rocksdb:low5 (678,398,276 us, 7.09%)</title><rect x="899.9" y="1045" width="83.6" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="902.92" y="1055.5" >rocksdb:l..</text>
+</g>
+<g >
+<title>cpuidle_enter (2,598,038 us, 0.03%)</title><rect x="554.8" y="245" width="0.3" height="15.0" fill="rgb(51,166,166)" rx="2" ry="2" />
+<text  x="557.75" y="255.5" ></text>
+</g>
+<g >
+<title>nvme_complete_rq (3,304,210 us, 0.03%)</title><rect x="781.1" y="469" width="0.4" height="15.0" fill="rgb(64,178,178)" rx="2" ry="2" />
+<text  x="784.11" y="479.5" ></text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (1,037,769 us, 0.01%)</title><rect x="10.0" y="389" width="0.1" height="15.0" fill="rgb(56,171,171)" rx="2" ry="2" />
+<text  x="13.00" y="399.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (803,484,042 us, 8.39%)</title><rect x="555.9" y="981" width="99.0" height="15.0" fill="rgb(133,133,249)" rx="2" ry="2" />
+<text  x="558.91" y="991.5" >do_syscall_64</text>
+</g>
+<g >
+<title>schedule (583,703,267 us, 6.10%)</title><rect x="345.9" y="901" width="72.0" height="15.0" fill="rgb(117,117,236)" rx="2" ry="2" />
+<text  x="348.93" y="911.5" >schedule</text>
+</g>
+<g >
+<title>schedule (8,160,102 us, 0.09%)</title><rect x="982.5" y="709" width="1.0" height="15.0" fill="rgb(93,93,216)" rx="2" ry="2" />
+<text  x="985.46" y="719.5" ></text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (1,380,274 us, 0.01%)</title><rect x="1116.1" y="453" width="0.1" height="15.0" fill="rgb(77,190,190)" rx="2" ry="2" />
+<text  x="1119.08" y="463.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (577,809,533 us, 6.04%)</title><rect x="1117.4" y="805" width="71.3" height="15.0" fill="rgb(102,213,213)" rx="2" ry="2" />
+<text  x="1120.45" y="815.5" >entry_SY..</text>
+</g>
+<g >
+<title>swapper/27 (1,006,943 us, 0.01%)</title><rect x="417.9" y="133" width="0.2" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="420.93" y="143.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (9,154,866 us, 0.10%)</title><rect x="781.1" y="821" width="1.1" height="15.0" fill="rgb(107,107,228)" rx="2" ry="2" />
+<text  x="784.11" y="831.5" ></text>
+</g>
+<g >
+<title>nvme_irq (3,937,884 us, 0.04%)</title><rect x="655.0" y="389" width="0.5" height="15.0" fill="rgb(61,175,175)" rx="2" ry="2" />
+<text  x="657.99" y="399.5" ></text>
+</g>
+<g >
+<title>wait_on_page_bit_common (1,380,274 us, 0.01%)</title><rect x="1116.1" y="709" width="0.1" height="15.0" fill="rgb(139,139,254)" rx="2" ry="2" />
+<text  x="1119.08" y="719.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,420,866 us, 0.10%)</title><rect x="554.7" y="917" width="1.2" height="15.0" fill="rgb(124,124,242)" rx="2" ry="2" />
+<text  x="557.74" y="927.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (1,037,769 us, 0.01%)</title><rect x="10.0" y="501" width="0.1" height="15.0" fill="rgb(78,191,191)" rx="2" ry="2" />
+<text  x="13.00" y="511.5" ></text>
+</g>
+<g >
+<title>nvme_irq (1,380,274 us, 0.01%)</title><rect x="1116.1" y="389" width="0.1" height="15.0" fill="rgb(83,195,195)" rx="2" ry="2" />
+<text  x="1119.08" y="399.5" ></text>
+</g>
+<g >
+<title>all (9,574,093,798 us, 100%)</title><rect x="10.0" y="1061" width="1180.0" height="15.0" fill="rgb(115,115,234)" rx="2" ry="2" />
+<text  x="13.00" y="1071.5" ></text>
+</g>
+<g >
+<title> (5,759,902 us, 0.06%)</title><rect x="781.5" y="549" width="0.7" height="15.0" fill="rgb(52,167,167)" rx="2" ry="2" />
+<text  x="784.53" y="559.5" ></text>
+</g>
+<g >
+<title>schedule (1,064,943 us, 0.01%)</title><rect x="10.0" y="725" width="0.1" height="15.0" fill="rgb(96,96,219)" rx="2" ry="2" />
+<text  x="13.00" y="735.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (8,972,943 us, 0.09%)</title><rect x="554.8" y="757" width="1.1" height="15.0" fill="rgb(138,138,254)" rx="2" ry="2" />
+<text  x="557.75" y="767.5" ></text>
+</g>
+<g >
+<title>[unknown] (815,669,449 us, 8.52%)</title><rect x="555.9" y="1029" width="100.5" height="15.0" fill="rgb(102,102,223)" rx="2" ry="2" />
+<text  x="558.91" y="1039.5" >[unknown]</text>
+</g>
+<g >
+<title>ret_from_intr (2,598,217 us, 0.03%)</title><rect x="554.8" y="277" width="0.3" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="557.75" y="287.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (6,357,601 us, 0.07%)</title><rect x="344.9" y="661" width="0.8" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="347.88" y="671.5" ></text>
+</g>
+<g >
+<title>swapper/26 (125,198,580 us, 1.31%)</title><rect x="95.2" y="677" width="15.4" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="98.16" y="687.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (4,029,959 us, 0.04%)</title><rect x="417.9" y="357" width="0.5" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="420.93" y="367.5" ></text>
+</g>
+<g >
+<title>rocksdb:low7 (93,896,449 us, 0.98%)</title><rect x="406.3" y="773" width="11.6" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="409.30" y="783.5" ></text>
+</g>
+<g >
+<title>__filemap_fdatawait_range (2,372,032 us, 0.02%)</title><rect x="344.4" y="709" width="0.3" height="15.0" fill="rgb(104,104,225)" rx="2" ry="2" />
+<text  x="347.39" y="719.5" ></text>
+</g>
+<g >
+<title> (6,357,601 us, 0.07%)</title><rect x="344.9" y="533" width="0.8" height="15.0" fill="rgb(108,218,218)" rx="2" ry="2" />
+<text  x="347.88" y="543.5" ></text>
+</g>
+<g >
+<title>blk_mq_complete_request (1,160,398 us, 0.01%)</title><rect x="344.7" y="309" width="0.2" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="347.73" y="319.5" ></text>
+</g>
+<g >
+<title>schedule (1,839,468,120 us, 19.21%)</title><rect x="117.4" y="901" width="226.7" height="15.0" fill="rgb(86,86,210)" rx="2" ry="2" />
+<text  x="120.37" y="911.5" >schedule</text>
+</g>
+<g >
+<title>autoremove_wake_function (7,999,101 us, 0.08%)</title><rect x="1189.0" y="677" width="0.9" height="15.0" fill="rgb(61,175,175)" rx="2" ry="2" />
+<text  x="1191.96" y="687.5" ></text>
+</g>
+<g >
+<title>-- (8,160,102 us, 0.09%)</title><rect x="982.5" y="693" width="1.0" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="985.46" y="703.5" ></text>
+</g>
+<g >
+<title>nvme_complete_rq (1,900,842 us, 0.02%)</title><rect x="982.2" y="469" width="0.3" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="985.23" y="479.5" ></text>
+</g>
+<g >
+<title>futex_wake (577,809,533 us, 6.04%)</title><rect x="1117.4" y="869" width="71.3" height="15.0" fill="rgb(55,169,169)" rx="2" ry="2" />
+<text  x="1120.45" y="879.5" >futex_wake</text>
+</g>
+<g >
+<title>blk_mq_free_request (1,160,398 us, 0.01%)</title><rect x="344.7" y="389" width="0.2" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="347.73" y="399.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,919,135 us, 0.10%)</title><rect x="781.1" y="1013" width="1.2" height="15.0" fill="rgb(83,83,208)" rx="2" ry="2" />
+<text  x="784.06" y="1023.5" ></text>
+</g>
+<g >
+<title>bio_endio (3,937,884 us, 0.04%)</title><rect x="655.0" y="517" width="0.5" height="15.0" fill="rgb(98,209,209)" rx="2" ry="2" />
+<text  x="657.99" y="527.5" ></text>
+</g>
+<g >
+<title>[unknown] (12,595,766 us, 0.13%)</title><rect x="344.4" y="885" width="1.5" height="15.0" fill="rgb(107,107,228)" rx="2" ry="2" />
+<text  x="347.38" y="895.5" ></text>
+</g>
+<g >
+<title>handle_irq_event (2,598,217 us, 0.03%)</title><rect x="554.8" y="341" width="0.3" height="15.0" fill="rgb(83,195,195)" rx="2" ry="2" />
+<text  x="557.75" y="351.5" ></text>
+</g>
+<g >
+<title> (9,892,529 us, 0.10%)</title><rect x="1188.7" y="853" width="1.2" height="15.0" fill="rgb(83,83,208)" rx="2" ry="2" />
+<text  x="1191.72" y="863.5" ></text>
+</g>
+<g >
+<title>handle_irq (2,372,031 us, 0.02%)</title><rect x="344.4" y="293" width="0.3" height="15.0" fill="rgb(91,202,202)" rx="2" ry="2" />
+<text  x="347.39" y="303.5" ></text>
+</g>
+<g >
+<title>kthread (7,999,101 us, 0.08%)</title><rect x="1189.0" y="581" width="0.9" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="1191.96" y="591.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (2,371,603 us, 0.02%)</title><rect x="344.4" y="181" width="0.3" height="15.0" fill="rgb(89,201,201)" rx="2" ry="2" />
+<text  x="347.39" y="191.5" ></text>
+</g>
+<g >
+<title>rocksdb:low7 (79,115,366 us, 0.83%)</title><rect x="972.4" y="773" width="9.8" height="15.0" fill="rgb(56,170,170)" rx="2" ry="2" />
+<text  x="975.41" y="783.5" ></text>
+</g>
+<g >
+<title>sys_futex (667,286,698 us, 6.97%)</title><rect x="899.9" y="965" width="82.3" height="15.0" fill="rgb(134,134,250)" rx="2" ry="2" />
+<text  x="902.92" y="975.5" >sys_futex</text>
+</g>
+<g >
+<title>__wake_up (6,291,311 us, 0.07%)</title><rect x="555.1" y="629" width="0.8" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="558.08" y="639.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (8,972,956 us, 0.09%)</title><rect x="554.8" y="837" width="1.1" height="15.0" fill="rgb(130,130,247)" rx="2" ry="2" />
+<text  x="557.75" y="847.5" ></text>
+</g>
+<g >
+<title>__filemap_fdatawait_range (1,900,842 us, 0.02%)</title><rect x="982.2" y="725" width="0.3" height="15.0" fill="rgb(106,106,227)" rx="2" ry="2" />
+<text  x="985.23" y="735.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (954,444,856 us, 9.97%)</title><rect x="782.3" y="997" width="117.6" height="15.0" fill="rgb(95,95,217)" rx="2" ry="2" />
+<text  x="785.29" y="1007.5" >entry_SYSCALL_..</text>
+</g>
+<g >
+<title>nvme_irq (3,304,210 us, 0.03%)</title><rect x="781.1" y="389" width="0.4" height="15.0" fill="rgb(77,189,189)" rx="2" ry="2" />
+<text  x="784.11" y="399.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (577,809,969 us, 6.04%)</title><rect x="1117.4" y="997" width="71.3" height="15.0" fill="rgb(86,86,210)" rx="2" ry="2" />
+<text  x="1120.45" y="1007.5" >entry_SY..</text>
+</g>
+<g >
+<title>__wake_up_common (2,198,241 us, 0.02%)</title><rect x="345.7" y="613" width="0.2" height="15.0" fill="rgb(80,193,193)" rx="2" ry="2" />
+<text  x="348.66" y="623.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,577,665 us, 0.11%)</title><rect x="982.2" y="869" width="1.3" height="15.0" fill="rgb(112,112,231)" rx="2" ry="2" />
+<text  x="985.23" y="879.5" ></text>
+</g>
+<g >
+<title> (10,549,087 us, 0.11%)</title><rect x="1116.1" y="853" width="1.3" height="15.0" fill="rgb(131,131,247)" rx="2" ry="2" />
+<text  x="1119.08" y="863.5" ></text>
+</g>
+<g >
+<title>kthread (6,291,311 us, 0.07%)</title><rect x="555.1" y="581" width="0.8" height="15.0" fill="rgb(102,213,213)" rx="2" ry="2" />
+<text  x="558.08" y="591.5" ></text>
+</g>
+<g >
+<title>-- (4,029,974 us, 0.04%)</title><rect x="417.9" y="661" width="0.5" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="420.93" y="671.5" ></text>
+</g>
+<g >
+<title>rocksdb:high0 (170,366,995 us, 1.78%)</title><rect x="345.9" y="773" width="21.0" height="15.0" fill="rgb(72,185,185)" rx="2" ry="2" />
+<text  x="348.93" y="783.5" ></text>
+</g>
+<g >
+<title> (2,207,157 us, 0.02%)</title><rect x="345.7" y="805" width="0.2" height="15.0" fill="rgb(126,126,243)" rx="2" ry="2" />
+<text  x="348.66" y="815.5" ></text>
+</g>
+<g >
+<title>do_idle (869,791,475 us, 9.08%)</title><rect x="10.1" y="757" width="107.2" height="15.0" fill="rgb(97,208,208)" rx="2" ry="2" />
+<text  x="13.14" y="767.5" >do_idle</text>
+</g>
+<g >
+<title>swapper/31 (1,248,294 us, 0.01%)</title><rect x="781.2" y="133" width="0.2" height="15.0" fill="rgb(82,194,194)" rx="2" ry="2" />
+<text  x="784.25" y="143.5" ></text>
+</g>
+<g >
+<title>handle_irq (1,850,852 us, 0.02%)</title><rect x="1188.7" y="309" width="0.3" height="15.0" fill="rgb(104,215,215)" rx="2" ry="2" />
+<text  x="1191.72" y="319.5" ></text>
+</g>
+<g >
+<title>wbt_done (1,160,398 us, 0.01%)</title><rect x="344.7" y="405" width="0.2" height="15.0" fill="rgb(78,191,191)" rx="2" ry="2" />
+<text  x="347.73" y="415.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (11,263,695 us, 0.12%)</title><rect x="655.0" y="821" width="1.4" height="15.0" fill="rgb(116,116,235)" rx="2" ry="2" />
+<text  x="657.99" y="831.5" ></text>
+</g>
+<g >
+<title>call_cpuidle (869,791,475 us, 9.08%)</title><rect x="10.1" y="773" width="107.2" height="15.0" fill="rgb(75,187,187)" rx="2" ry="2" />
+<text  x="13.14" y="783.5" >call_cpuidle</text>
+</g>
+<g >
+<title>nvme_process_cq (1,900,842 us, 0.02%)</title><rect x="982.2" y="405" width="0.3" height="15.0" fill="rgb(64,178,178)" rx="2" ry="2" />
+<text  x="985.23" y="415.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (8,972,956 us, 0.09%)</title><rect x="554.8" y="821" width="1.1" height="15.0" fill="rgb(82,82,206)" rx="2" ry="2" />
+<text  x="557.75" y="831.5" ></text>
+</g>
+<g >
+<title>do_IRQ (4,029,959 us, 0.04%)</title><rect x="417.9" y="293" width="0.5" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="420.93" y="303.5" ></text>
+</g>
+<g >
+<title>wbt_wait (1,160,398 us, 0.01%)</title><rect x="344.7" y="549" width="0.2" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="347.73" y="559.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (1,160,398 us, 0.01%)</title><rect x="344.7" y="85" width="0.2" height="15.0" fill="rgb(101,211,211)" rx="2" ry="2" />
+<text  x="347.73" y="95.5" ></text>
+</g>
+<g >
+<title>[unknown] (954,444,856 us, 9.97%)</title><rect x="782.3" y="1029" width="117.6" height="15.0" fill="rgb(86,86,210)" rx="2" ry="2" />
+<text  x="785.29" y="1039.5" >[unknown]</text>
+</g>
+<g >
+<title>schedule (6,291,342 us, 0.07%)</title><rect x="555.1" y="709" width="0.8" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="558.08" y="719.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (8,160,088 us, 0.09%)</title><rect x="982.5" y="677" width="1.0" height="15.0" fill="rgb(90,202,202)" rx="2" ry="2" />
+<text  x="985.46" y="687.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,728,541 us, 0.12%)</title><rect x="655.0" y="869" width="1.4" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="657.99" y="879.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (3,304,144 us, 0.03%)</title><rect x="781.1" y="197" width="0.4" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="784.11" y="207.5" ></text>
+</g>
+<g >
+<title>ext4_map_blocks (1,064,943 us, 0.01%)</title><rect x="10.0" y="917" width="0.1" height="15.0" fill="rgb(110,110,230)" rx="2" ry="2" />
+<text  x="13.00" y="927.5" ></text>
+</g>
+<g >
+<title>-- (6,377,369 us, 0.07%)</title><rect x="418.4" y="693" width="0.8" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="421.44" y="703.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,839,475,212 us, 19.21%)</title><rect x="117.4" y="997" width="226.7" height="15.0" fill="rgb(116,116,235)" rx="2" ry="2" />
+<text  x="120.36" y="1007.5" >entry_SYSCALL_64_after_hwframe</text>
+</g>
+<g >
+<title>[unknown] (9,919,135 us, 0.10%)</title><rect x="781.1" y="997" width="1.2" height="15.0" fill="rgb(135,135,251)" rx="2" ry="2" />
+<text  x="784.06" y="1007.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (10,548,980 us, 0.11%)</title><rect x="1116.1" y="757" width="1.3" height="15.0" fill="rgb(127,127,244)" rx="2" ry="2" />
+<text  x="1119.08" y="767.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (9,158,102 us, 0.10%)</title><rect x="1116.2" y="661" width="1.2" height="15.0" fill="rgb(92,204,204)" rx="2" ry="2" />
+<text  x="1119.25" y="671.5" ></text>
+</g>
+<g >
+<title>futex_wake (1,074,850,233 us, 11.23%)</title><rect x="983.5" y="869" width="132.5" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="986.53" y="879.5" >futex_wake</text>
+</g>
+<g >
+<title>schedule (7,176,391 us, 0.07%)</title><rect x="655.5" y="709" width="0.9" height="15.0" fill="rgb(100,100,222)" rx="2" ry="2" />
+<text  x="658.50" y="719.5" ></text>
+</g>
+<g >
+<title>call_cpuidle (1,160,398 us, 0.01%)</title><rect x="344.7" y="117" width="0.2" height="15.0" fill="rgb(52,166,166)" rx="2" ry="2" />
+<text  x="347.73" y="127.5" ></text>
+</g>
+<g >
+<title>rocksdb:low3 (65,838,040 us, 0.69%)</title><rect x="615.2" y="773" width="8.1" height="15.0" fill="rgb(82,194,194)" rx="2" ry="2" />
+<text  x="618.23" y="783.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,104,884 us, 0.12%)</title><rect x="982.2" y="997" width="1.3" height="15.0" fill="rgb(103,103,224)" rx="2" ry="2" />
+<text  x="985.16" y="1007.5" ></text>
+</g>
+<g >
+<title>blk_mq_make_request (1,160,398 us, 0.01%)</title><rect x="344.7" y="565" width="0.2" height="15.0" fill="rgb(125,125,243)" rx="2" ry="2" />
+<text  x="347.73" y="575.5" ></text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (7,999,101 us, 0.08%)</title><rect x="1189.0" y="533" width="0.9" height="15.0" fill="rgb(80,193,193)" rx="2" ry="2" />
+<text  x="1191.96" y="543.5" ></text>
+</g>
+<g >
+<title>start_secondary (3,937,710 us, 0.04%)</title><rect x="655.0" y="181" width="0.5" height="15.0" fill="rgb(78,191,191)" rx="2" ry="2" />
+<text  x="657.99" y="191.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (2,598,217 us, 0.03%)</title><rect x="554.8" y="437" width="0.3" height="15.0" fill="rgb(80,192,192)" rx="2" ry="2" />
+<text  x="557.75" y="447.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (11,263,695 us, 0.12%)</title><rect x="655.0" y="837" width="1.4" height="15.0" fill="rgb(128,128,245)" rx="2" ry="2" />
+<text  x="657.99" y="847.5" ></text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (1,037,769 us, 0.01%)</title><rect x="10.0" y="469" width="0.1" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="13.00" y="479.5" ></text>
+</g>
+<g >
+<title>swapper/20 (354,040,161 us, 3.70%)</title><rect x="13.2" y="677" width="43.7" height="15.0" fill="rgb(52,167,167)" rx="2" ry="2" />
+<text  x="16.23" y="687.5" >swap..</text>
+</g>
+<g >
+<title>[unknown] (10,588,604 us, 0.11%)</title><rect x="982.2" y="901" width="1.3" height="15.0" fill="rgb(87,87,210)" rx="2" ry="2" />
+<text  x="985.23" y="911.5" ></text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (9,158,102 us, 0.10%)</title><rect x="1116.2" y="533" width="1.2" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="1119.25" y="543.5" ></text>
+</g>
+<g >
+<title> (10,386,231 us, 0.11%)</title><rect x="344.4" y="837" width="1.3" height="15.0" fill="rgb(89,89,212)" rx="2" ry="2" />
+<text  x="347.38" y="847.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (6,377,330 us, 0.07%)</title><rect x="418.4" y="677" width="0.8" height="15.0" fill="rgb(106,217,217)" rx="2" ry="2" />
+<text  x="421.44" y="687.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (6,357,601 us, 0.07%)</title><rect x="344.9" y="645" width="0.8" height="15.0" fill="rgb(82,195,195)" rx="2" ry="2" />
+<text  x="347.88" y="655.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (9,892,321 us, 0.10%)</title><rect x="1188.7" y="773" width="1.2" height="15.0" fill="rgb(102,102,223)" rx="2" ry="2" />
+<text  x="1191.72" y="783.5" ></text>
+</g>
+<g >
+<title>wake_page_function (2,598,217 us, 0.03%)</title><rect x="554.8" y="629" width="0.3" height="15.0" fill="rgb(72,185,185)" rx="2" ry="2" />
+<text  x="557.75" y="639.5" ></text>
+</g>
+<g >
+<title>kthread (5,759,902 us, 0.06%)</title><rect x="781.5" y="581" width="0.7" height="15.0" fill="rgb(98,209,209)" rx="2" ry="2" />
+<text  x="784.53" y="591.5" ></text>
+</g>
+<g >
+<title>bio_endio (1,380,274 us, 0.01%)</title><rect x="1116.1" y="517" width="0.1" height="15.0" fill="rgb(73,186,186)" rx="2" ry="2" />
+<text  x="1119.08" y="527.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (8,160,088 us, 0.09%)</title><rect x="982.5" y="613" width="1.0" height="15.0" fill="rgb(59,173,173)" rx="2" ry="2" />
+<text  x="985.46" y="623.5" ></text>
+</g>
+<g >
+<title>-- (2,198,241 us, 0.02%)</title><rect x="345.7" y="645" width="0.2" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="348.66" y="655.5" ></text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (1,850,852 us, 0.02%)</title><rect x="1188.7" y="373" width="0.3" height="15.0" fill="rgb(63,177,177)" rx="2" ry="2" />
+<text  x="1191.72" y="383.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (1,379,978 us, 0.01%)</title><rect x="1116.1" y="261" width="0.1" height="15.0" fill="rgb(102,213,213)" rx="2" ry="2" />
+<text  x="1119.08" y="271.5" ></text>
+</g>
+<g >
+<title> (3,937,710 us, 0.04%)</title><rect x="655.0" y="149" width="0.5" height="15.0" fill="rgb(79,192,192)" rx="2" ry="2" />
+<text  x="657.99" y="159.5" ></text>
+</g>
+<g >
+<title>wake_up_page_bit (3,937,884 us, 0.04%)</title><rect x="655.0" y="581" width="0.5" height="15.0" fill="rgb(103,214,214)" rx="2" ry="2" />
+<text  x="657.99" y="591.5" ></text>
+</g>
+<g >
+<title>ext4_writepages (1,595,992 us, 0.02%)</title><rect x="344.7" y="677" width="0.2" height="15.0" fill="rgb(81,81,206)" rx="2" ry="2" />
+<text  x="347.68" y="687.5" ></text>
+</g>
+<g >
+<title>schedule (6,377,369 us, 0.07%)</title><rect x="418.4" y="709" width="0.8" height="15.0" fill="rgb(126,126,244)" rx="2" ry="2" />
+<text  x="421.44" y="719.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,513,386 us, 0.10%)</title><rect x="781.1" y="869" width="1.2" height="15.0" fill="rgb(132,132,248)" rx="2" ry="2" />
+<text  x="784.11" y="879.5" ></text>
+</g>
+<g >
+<title>-- (2,598,219 us, 0.03%)</title><rect x="554.8" y="661" width="0.3" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="557.75" y="671.5" ></text>
+</g>
+<g >
+<title>blk_update_request (3,304,210 us, 0.03%)</title><rect x="781.1" y="501" width="0.4" height="15.0" fill="rgb(104,215,215)" rx="2" ry="2" />
+<text  x="784.11" y="511.5" ></text>
+</g>
+<g >
+<title>do_idle (2,371,603 us, 0.02%)</title><rect x="344.4" y="197" width="0.3" height="15.0" fill="rgb(94,206,206)" rx="2" ry="2" />
+<text  x="347.39" y="207.5" ></text>
+</g>
+<g >
+<title>-- (1,839,468,120 us, 19.21%)</title><rect x="117.4" y="885" width="226.7" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="120.37" y="895.5" >--</text>
+</g>
+<g >
+<title>nvme_irq (4,029,959 us, 0.04%)</title><rect x="417.9" y="389" width="0.5" height="15.0" fill="rgb(84,197,197)" rx="2" ry="2" />
+<text  x="420.93" y="399.5" ></text>
+</g>
+<g >
+<title>swapper/24 (1,159,155 us, 0.01%)</title><rect x="655.0" y="133" width="0.1" height="15.0" fill="rgb(109,219,219)" rx="2" ry="2" />
+<text  x="657.99" y="143.5" ></text>
+</g>
+<g >
+<title>kjournald2 (5,759,902 us, 0.06%)</title><rect x="781.5" y="597" width="0.7" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="784.53" y="607.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (3,304,210 us, 0.03%)</title><rect x="781.1" y="437" width="0.4" height="15.0" fill="rgb(102,213,213)" rx="2" ry="2" />
+<text  x="784.11" y="447.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,867,192 us, 0.11%)</title><rect x="1188.7" y="933" width="1.3" height="15.0" fill="rgb(135,135,251)" rx="2" ry="2" />
+<text  x="1191.66" y="943.5" ></text>
+</g>
+<g >
+<title>ret_from_fork (8,160,088 us, 0.09%)</title><rect x="982.5" y="565" width="1.0" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="985.46" y="575.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,104,884 us, 0.12%)</title><rect x="982.2" y="1013" width="1.3" height="15.0" fill="rgb(130,130,246)" rx="2" ry="2" />
+<text  x="985.16" y="1023.5" ></text>
+</g>
+<g >
+<title>bio_endio (2,372,031 us, 0.02%)</title><rect x="344.4" y="501" width="0.3" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="347.39" y="511.5" ></text>
+</g>
+<g >
+<title>__filemap_fdatawait_range (1,380,274 us, 0.01%)</title><rect x="1116.1" y="725" width="0.1" height="15.0" fill="rgb(133,133,249)" rx="2" ry="2" />
+<text  x="1119.08" y="735.5" ></text>
+</g>
+<g >
+<title>blk_mq_complete_request (2,598,217 us, 0.03%)</title><rect x="554.8" y="421" width="0.3" height="15.0" fill="rgb(99,210,210)" rx="2" ry="2" />
+<text  x="557.75" y="431.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (1,037,769 us, 0.01%)</title><rect x="10.0" y="661" width="0.1" height="15.0" fill="rgb(58,173,173)" rx="2" ry="2" />
+<text  x="13.00" y="671.5" ></text>
+</g>
+<g >
+<title>nvme_process_cq (1,160,398 us, 0.01%)</title><rect x="344.7" y="293" width="0.2" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="347.73" y="303.5" ></text>
+</g>
+<g >
+<title>handle_edge_irq (1,380,274 us, 0.01%)</title><rect x="1116.1" y="325" width="0.1" height="15.0" fill="rgb(94,205,205)" rx="2" ry="2" />
+<text  x="1119.08" y="335.5" ></text>
+</g>
+<g >
+<title>rocksdb:low6 (1,086,496,783 us, 11.35%)</title><rect x="983.5" y="1045" width="133.9" height="15.0" fill="rgb(118,118,236)" rx="2" ry="2" />
+<text  x="986.53" y="1055.5" >rocksdb:low6</text>
+</g>
+<g >
+<title>[unknown] (9,559,379 us, 0.10%)</title><rect x="781.1" y="917" width="1.2" height="15.0" fill="rgb(110,110,230)" rx="2" ry="2" />
+<text  x="784.11" y="927.5" ></text>
+</g>
+<g >
+<title>sys_futex (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="837" width="135.4" height="15.0" fill="rgb(106,217,217)" rx="2" ry="2" />
+<text  x="422.28" y="847.5" >sys_futex</text>
+</g>
+<g >
+<title>io_schedule (2,598,219 us, 0.03%)</title><rect x="554.8" y="693" width="0.3" height="15.0" fill="rgb(122,122,240)" rx="2" ry="2" />
+<text  x="557.75" y="703.5" ></text>
+</g>
+<g >
+<title>__wake_up (7,999,101 us, 0.08%)</title><rect x="1189.0" y="629" width="0.9" height="15.0" fill="rgb(97,208,208)" rx="2" ry="2" />
+<text  x="1191.96" y="639.5" ></text>
+</g>
+<g >
+<title>wait_on_page_bit_common (1,850,864 us, 0.02%)</title><rect x="1188.7" y="709" width="0.3" height="15.0" fill="rgb(128,128,245)" rx="2" ry="2" />
+<text  x="1191.72" y="719.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,074,850,233 us, 11.23%)</title><rect x="983.5" y="821" width="132.5" height="15.0" fill="rgb(71,184,184)" rx="2" ry="2" />
+<text  x="986.53" y="831.5" >do_syscall_64</text>
+</g>
+<g >
+<title>call_cpuidle (2,371,603 us, 0.02%)</title><rect x="344.4" y="213" width="0.3" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="347.39" y="223.5" ></text>
+</g>
+<g >
+<title>ret_from_fork (6,377,330 us, 0.07%)</title><rect x="418.4" y="565" width="0.8" height="15.0" fill="rgb(88,200,200)" rx="2" ry="2" />
+<text  x="421.44" y="575.5" ></text>
+</g>
+<g >
+<title>end_page_writeback (3,304,210 us, 0.03%)</title><rect x="781.1" y="565" width="0.4" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="784.11" y="575.5" ></text>
+</g>
+<g >
+<title>-- (2,424,459 us, 0.03%)</title><rect x="344.1" y="693" width="0.3" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="347.08" y="703.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (5,759,902 us, 0.06%)</title><rect x="781.5" y="613" width="0.7" height="15.0" fill="rgb(104,214,214)" rx="2" ry="2" />
+<text  x="784.53" y="623.5" ></text>
+</g>
+<g >
+<title>futex_wake (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="869" width="124.7" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="659.44" y="879.5" >futex_wake</text>
+</g>
+<g >
+<title>do_syscall_64 (10,487,458 us, 0.11%)</title><rect x="417.9" y="821" width="1.3" height="15.0" fill="rgb(93,93,216)" rx="2" ry="2" />
+<text  x="420.93" y="831.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (1,037,769 us, 0.01%)</title><rect x="10.0" y="453" width="0.1" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="13.00" y="463.5" ></text>
+</g>
+<g >
+<title>__wake_up_common_lock (7,176,391 us, 0.07%)</title><rect x="655.5" y="645" width="0.9" height="15.0" fill="rgb(105,215,215)" rx="2" ry="2" />
+<text  x="658.50" y="655.5" ></text>
+</g>
+<g >
+<title>db_bench (871,115,655 us, 9.10%)</title><rect x="10.0" y="1045" width="107.4" height="15.0" fill="rgb(133,133,249)" rx="2" ry="2" />
+<text  x="13.00" y="1055.5" >db_bench</text>
+</g>
+<g >
+<title>sys_futex (577,809,542 us, 6.04%)</title><rect x="1117.4" y="965" width="71.3" height="15.0" fill="rgb(131,131,247)" rx="2" ry="2" />
+<text  x="1120.45" y="975.5" >sys_futex</text>
+</g>
+<g >
+<title>__jbd2_journal_force_commit (2,424,459 us, 0.03%)</title><rect x="344.1" y="741" width="0.3" height="15.0" fill="rgb(124,124,242)" rx="2" ry="2" />
+<text  x="347.08" y="751.5" ></text>
+</g>
+<g >
+<title> (3,304,144 us, 0.03%)</title><rect x="781.1" y="149" width="0.4" height="15.0" fill="rgb(68,181,181)" rx="2" ry="2" />
+<text  x="784.11" y="159.5" ></text>
+</g>
+<g >
+<title>wait_on_page_bit_common (3,937,884 us, 0.04%)</title><rect x="655.0" y="709" width="0.5" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="657.99" y="719.5" ></text>
+</g>
+<g >
+<title>nvme_process_cq (3,937,884 us, 0.04%)</title><rect x="655.0" y="405" width="0.5" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="657.99" y="415.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,813,047 us, 0.10%)</title><rect x="554.7" y="981" width="1.2" height="15.0" fill="rgb(103,103,224)" rx="2" ry="2" />
+<text  x="557.70" y="991.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,730,634 us, 0.12%)</title><rect x="655.0" y="885" width="1.4" height="15.0" fill="rgb(101,101,223)" rx="2" ry="2" />
+<text  x="657.99" y="895.5" ></text>
+</g>
+<g >
+<title>futex_wait (869,862,728 us, 9.09%)</title><rect x="10.1" y="949" width="107.2" height="15.0" fill="rgb(137,137,252)" rx="2" ry="2" />
+<text  x="13.13" y="959.5" >futex_wait</text>
+</g>
+<g >
+<title>ext4_finish_bio (2,372,031 us, 0.02%)</title><rect x="344.4" y="533" width="0.3" height="15.0" fill="rgb(83,196,196)" rx="2" ry="2" />
+<text  x="347.39" y="543.5" ></text>
+</g>
+<g >
+<title>do_IRQ (3,937,884 us, 0.04%)</title><rect x="655.0" y="293" width="0.5" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="657.99" y="303.5" ></text>
+</g>
+<g >
+<title>__wake_up (1,037,769 us, 0.01%)</title><rect x="10.0" y="629" width="0.1" height="15.0" fill="rgb(93,205,205)" rx="2" ry="2" />
+<text  x="13.00" y="639.5" ></text>
+</g>
+<g >
+<title>__wait_on_bit (1,064,943 us, 0.01%)</title><rect x="10.0" y="773" width="0.1" height="15.0" fill="rgb(99,99,221)" rx="2" ry="2" />
+<text  x="13.00" y="783.5" ></text>
+</g>
+<g >
+<title>jbd2_complete_transaction (6,291,342 us, 0.07%)</title><rect x="555.1" y="741" width="0.8" height="15.0" fill="rgb(119,119,237)" rx="2" ry="2" />
+<text  x="558.08" y="751.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (10,071,755 us, 0.11%)</title><rect x="982.2" y="837" width="1.3" height="15.0" fill="rgb(133,133,249)" rx="2" ry="2" />
+<text  x="985.23" y="847.5" ></text>
+</g>
+<g >
+<title>schedule (2,598,219 us, 0.03%)</title><rect x="554.8" y="677" width="0.3" height="15.0" fill="rgb(83,83,207)" rx="2" ry="2" />
+<text  x="557.75" y="687.5" ></text>
+</g>
+<g >
+<title>nvme_complete_rq (1,850,852 us, 0.02%)</title><rect x="1188.7" y="469" width="0.3" height="15.0" fill="rgb(54,169,169)" rx="2" ry="2" />
+<text  x="1191.72" y="479.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,354,235 us, 0.11%)</title><rect x="1188.7" y="869" width="1.3" height="15.0" fill="rgb(119,119,238)" rx="2" ry="2" />
+<text  x="1191.72" y="879.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (1,850,666 us, 0.02%)</title><rect x="1188.7" y="197" width="0.3" height="15.0" fill="rgb(63,177,177)" rx="2" ry="2" />
+<text  x="1191.72" y="207.5" ></text>
+</g>
+<g >
+<title>-- (583,703,267 us, 6.10%)</title><rect x="345.9" y="885" width="72.0" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="348.93" y="895.5" >--</text>
+</g>
+<g >
+<title>rocksdb:low1 (129,100,544 us, 1.35%)</title><rect x="793.0" y="773" width="16.0" height="15.0" fill="rgb(66,180,180)" rx="2" ry="2" />
+<text  x="796.05" y="783.5" ></text>
+</g>
+<g >
+<title>call_cpuidle (2,598,038 us, 0.03%)</title><rect x="554.8" y="229" width="0.3" height="15.0" fill="rgb(57,171,171)" rx="2" ry="2" />
+<text  x="557.75" y="239.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (9,158,102 us, 0.10%)</title><rect x="1116.2" y="677" width="1.2" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="1119.25" y="687.5" ></text>
+</g>
+<g >
+<title>do_futex (667,286,698 us, 6.97%)</title><rect x="899.9" y="853" width="82.3" height="15.0" fill="rgb(56,170,170)" rx="2" ry="2" />
+<text  x="902.92" y="863.5" >do_futex</text>
+</g>
+<g >
+<title>futex_wait_queue_me (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="917" width="124.7" height="15.0" fill="rgb(138,138,253)" rx="2" ry="2" />
+<text  x="659.44" y="927.5" >futex_wait_queu..</text>
+</g>
+<g >
+<title>[unknown] (12,185,032 us, 0.13%)</title><rect x="654.9" y="965" width="1.5" height="15.0" fill="rgb(84,84,208)" rx="2" ry="2" />
+<text  x="657.94" y="975.5" ></text>
+</g>
+<g >
+<title>-- (1,160,398 us, 0.01%)</title><rect x="344.7" y="501" width="0.2" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="347.73" y="511.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (3,937,710 us, 0.04%)</title><rect x="655.0" y="197" width="0.5" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="657.99" y="207.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,731,193 us, 0.12%)</title><rect x="655.0" y="901" width="1.4" height="15.0" fill="rgb(127,127,244)" rx="2" ry="2" />
+<text  x="657.99" y="911.5" ></text>
+</g>
+<g >
+<title>call_cpuidle (4,029,424 us, 0.04%)</title><rect x="417.9" y="229" width="0.5" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="420.93" y="239.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (2,598,217 us, 0.03%)</title><rect x="554.8" y="645" width="0.3" height="15.0" fill="rgb(52,167,167)" rx="2" ry="2" />
+<text  x="557.75" y="655.5" ></text>
+</g>
+<g >
+<title>nvme_complete_rq (2,372,031 us, 0.02%)</title><rect x="344.4" y="453" width="0.3" height="15.0" fill="rgb(56,171,171)" rx="2" ry="2" />
+<text  x="347.39" y="463.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (2,198,241 us, 0.02%)</title><rect x="345.7" y="565" width="0.2" height="15.0" fill="rgb(77,190,190)" rx="2" ry="2" />
+<text  x="348.66" y="575.5" ></text>
+</g>
+<g >
+<title>blk_update_request (1,037,769 us, 0.01%)</title><rect x="10.0" y="517" width="0.1" height="15.0" fill="rgb(92,203,203)" rx="2" ry="2" />
+<text  x="13.00" y="527.5" ></text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (2,598,217 us, 0.03%)</title><rect x="554.8" y="453" width="0.3" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="557.75" y="463.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (2,424,459 us, 0.03%)</title><rect x="344.1" y="677" width="0.3" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="347.08" y="687.5" ></text>
+</g>
+<g >
+<title>handle_irq_event (1,160,398 us, 0.01%)</title><rect x="344.7" y="229" width="0.2" height="15.0" fill="rgb(84,196,196)" rx="2" ry="2" />
+<text  x="347.73" y="239.5" ></text>
+</g>
+<g >
+<title>nvme_irq (2,372,031 us, 0.02%)</title><rect x="344.4" y="373" width="0.3" height="15.0" fill="rgb(56,170,170)" rx="2" ry="2" />
+<text  x="347.39" y="383.5" ></text>
+</g>
+<g >
+<title>io_schedule (1,160,398 us, 0.01%)</title><rect x="344.7" y="533" width="0.2" height="15.0" fill="rgb(95,95,217)" rx="2" ry="2" />
+<text  x="347.73" y="543.5" ></text>
+</g>
+<g >
+<title>wake_page_function (4,029,959 us, 0.04%)</title><rect x="417.9" y="629" width="0.5" height="15.0" fill="rgb(81,193,193)" rx="2" ry="2" />
+<text  x="420.93" y="639.5" ></text>
+</g>
+<g >
+<title>io_schedule (1,380,274 us, 0.01%)</title><rect x="1116.1" y="693" width="0.1" height="15.0" fill="rgb(135,135,251)" rx="2" ry="2" />
+<text  x="1119.08" y="703.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (3,304,210 us, 0.03%)</title><rect x="781.1" y="645" width="0.4" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="784.11" y="655.5" ></text>
+</g>
+<g >
+<title>io_schedule (3,937,884 us, 0.04%)</title><rect x="655.0" y="693" width="0.5" height="15.0" fill="rgb(86,86,210)" rx="2" ry="2" />
+<text  x="657.99" y="703.5" ></text>
+</g>
+<g >
+<title>ext4_end_bio (1,850,852 us, 0.02%)</title><rect x="1188.7" y="533" width="0.3" height="15.0" fill="rgb(88,199,199)" rx="2" ry="2" />
+<text  x="1191.72" y="543.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (6,377,330 us, 0.07%)</title><rect x="418.4" y="661" width="0.8" height="15.0" fill="rgb(71,184,184)" rx="2" ry="2" />
+<text  x="421.44" y="671.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (2,372,031 us, 0.02%)</title><rect x="344.4" y="629" width="0.3" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="347.39" y="639.5" ></text>
+</g>
+<g >
+<title>swapper/29 (1,895,581 us, 0.02%)</title><rect x="655.2" y="133" width="0.3" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="658.25" y="143.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (869,791,475 us, 9.08%)</title><rect x="10.1" y="805" width="107.2" height="15.0" fill="rgb(59,173,173)" rx="2" ry="2" />
+<text  x="13.14" y="815.5" >cpuidle_enter..</text>
+</g>
+<g >
+<title>ret_from_intr (3,937,884 us, 0.04%)</title><rect x="655.0" y="277" width="0.5" height="15.0" fill="rgb(56,170,170)" rx="2" ry="2" />
+<text  x="657.99" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (12,593,658 us, 0.13%)</title><rect x="344.4" y="853" width="1.5" height="15.0" fill="rgb(110,110,230)" rx="2" ry="2" />
+<text  x="347.38" y="863.5" ></text>
+</g>
+<g >
+<title>rocksdb:high0 (253,929,883 us, 2.65%)</title><rect x="419.3" y="773" width="31.3" height="15.0" fill="rgb(78,190,190)" rx="2" ry="2" />
+<text  x="422.28" y="783.5" >ro..</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (2,207,077 us, 0.02%)</title><rect x="345.7" y="789" width="0.2" height="15.0" fill="rgb(127,127,244)" rx="2" ry="2" />
+<text  x="348.66" y="799.5" ></text>
+</g>
+<g >
+<title>rocksdb:low5 (168,146,196 us, 1.76%)</title><rect x="1078.4" y="773" width="20.8" height="15.0" fill="rgb(67,181,181)" rx="2" ry="2" />
+<text  x="1081.45" y="783.5" ></text>
+</g>
+<g >
+<title>file_write_and_wait_range (1,893,194 us, 0.02%)</title><rect x="1188.7" y="741" width="0.3" height="15.0" fill="rgb(106,106,227)" rx="2" ry="2" />
+<text  x="1191.72" y="751.5" ></text>
+</g>
+<g >
+<title>schedule (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="901" width="124.7" height="15.0" fill="rgb(139,139,254)" rx="2" ry="2" />
+<text  x="659.44" y="911.5" >schedule</text>
+</g>
+<g >
+<title>call_cpuidle (1,037,769 us, 0.01%)</title><rect x="10.0" y="245" width="0.1" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="13.00" y="255.5" ></text>
+</g>
+<g >
+<title> (667,286,698 us, 6.97%)</title><rect x="899.9" y="789" width="82.3" height="15.0" fill="rgb(81,193,193)" rx="2" ry="2" />
+<text  x="902.92" y="799.5" ></text>
+</g>
+<g >
+<title>handle_edge_irq (3,937,884 us, 0.04%)</title><rect x="655.0" y="325" width="0.5" height="15.0" fill="rgb(109,219,219)" rx="2" ry="2" />
+<text  x="657.99" y="335.5" ></text>
+</g>
+<g >
+<title>schedule (2,424,459 us, 0.03%)</title><rect x="344.1" y="709" width="0.3" height="15.0" fill="rgb(136,136,252)" rx="2" ry="2" />
+<text  x="347.08" y="719.5" ></text>
+</g>
+<g >
+<title>blk_mq_complete_request (2,372,031 us, 0.02%)</title><rect x="344.4" y="405" width="0.3" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="347.39" y="415.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,919,092 us, 0.10%)</title><rect x="781.1" y="949" width="1.2" height="15.0" fill="rgb(89,89,213)" rx="2" ry="2" />
+<text  x="784.06" y="959.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (1,850,852 us, 0.02%)</title><rect x="1188.7" y="437" width="0.3" height="15.0" fill="rgb(92,204,204)" rx="2" ry="2" />
+<text  x="1191.72" y="447.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (2,371,603 us, 0.02%)</title><rect x="344.4" y="245" width="0.3" height="15.0" fill="rgb(52,167,167)" rx="2" ry="2" />
+<text  x="347.39" y="255.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (2,207,071 us, 0.02%)</title><rect x="345.7" y="709" width="0.2" height="15.0" fill="rgb(121,121,239)" rx="2" ry="2" />
+<text  x="348.66" y="719.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (2,371,603 us, 0.02%)</title><rect x="344.4" y="149" width="0.3" height="15.0" fill="rgb(88,200,200)" rx="2" ry="2" />
+<text  x="347.39" y="159.5" ></text>
+</g>
+<g >
+<title>__wake_up_locked_key_bookmark (2,598,217 us, 0.03%)</title><rect x="554.8" y="597" width="0.3" height="15.0" fill="rgb(59,174,174)" rx="2" ry="2" />
+<text  x="557.75" y="607.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,731,288 us, 0.12%)</title><rect x="655.0" y="917" width="1.4" height="15.0" fill="rgb(80,80,205)" rx="2" ry="2" />
+<text  x="657.99" y="927.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,363,474 us, 0.10%)</title><rect x="554.8" y="869" width="1.1" height="15.0" fill="rgb(125,125,243)" rx="2" ry="2" />
+<text  x="557.75" y="879.5" ></text>
+</g>
+<g >
+<title>nvme_complete_rq (1,380,274 us, 0.01%)</title><rect x="1116.1" y="469" width="0.1" height="15.0" fill="rgb(65,179,179)" rx="2" ry="2" />
+<text  x="1119.08" y="479.5" ></text>
+</g>
+<g >
+<title>__handle_irq_event_percpu (2,598,217 us, 0.03%)</title><rect x="554.8" y="373" width="0.3" height="15.0" fill="rgb(89,201,201)" rx="2" ry="2" />
+<text  x="557.75" y="383.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,375,314 us, 0.12%)</title><rect x="417.9" y="949" width="1.4" height="15.0" fill="rgb(89,89,213)" rx="2" ry="2" />
+<text  x="420.87" y="959.5" ></text>
+</g>
+<g >
+<title>do_futex (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="949" width="124.7" height="15.0" fill="rgb(114,114,233)" rx="2" ry="2" />
+<text  x="659.44" y="959.5" >do_futex</text>
+</g>
+<g >
+<title>nvme_process_cq (1,037,769 us, 0.01%)</title><rect x="10.0" y="421" width="0.1" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="13.00" y="431.5" ></text>
+</g>
+<g >
+<title>nvme_irq (2,598,217 us, 0.03%)</title><rect x="554.8" y="389" width="0.3" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="557.75" y="399.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (1,037,769 us, 0.01%)</title><rect x="10.0" y="213" width="0.1" height="15.0" fill="rgb(108,218,218)" rx="2" ry="2" />
+<text  x="13.00" y="223.5" ></text>
+</g>
+<g >
+<title>kthread (2,424,459 us, 0.03%)</title><rect x="344.1" y="581" width="0.3" height="15.0" fill="rgb(65,179,179)" rx="2" ry="2" />
+<text  x="347.08" y="591.5" ></text>
+</g>
+<g >
+<title>nvme_process_cq (4,029,959 us, 0.04%)</title><rect x="417.9" y="405" width="0.5" height="15.0" fill="rgb(69,183,183)" rx="2" ry="2" />
+<text  x="420.93" y="415.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (583,703,258 us, 6.10%)</title><rect x="345.9" y="821" width="72.0" height="15.0" fill="rgb(107,218,218)" rx="2" ry="2" />
+<text  x="348.93" y="831.5" >do_sysca..</text>
+</g>
+<g >
+<title>handle_irq (1,900,842 us, 0.02%)</title><rect x="982.2" y="309" width="0.3" height="15.0" fill="rgb(55,169,169)" rx="2" ry="2" />
+<text  x="985.23" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,813,001 us, 0.10%)</title><rect x="554.7" y="933" width="1.2" height="15.0" fill="rgb(83,83,208)" rx="2" ry="2" />
+<text  x="557.70" y="943.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (10,071,740 us, 0.11%)</title><rect x="982.2" y="757" width="1.3" height="15.0" fill="rgb(136,136,251)" rx="2" ry="2" />
+<text  x="985.23" y="767.5" ></text>
+</g>
+<g >
+<title>schedule (1,380,274 us, 0.01%)</title><rect x="1116.1" y="677" width="0.1" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="1119.08" y="687.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (2,372,031 us, 0.02%)</title><rect x="344.4" y="341" width="0.3" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="347.39" y="351.5" ></text>
+</g>
+<g >
+<title>nvme_pci_complete_rq (1,160,398 us, 0.01%)</title><rect x="344.7" y="341" width="0.2" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="347.73" y="351.5" ></text>
+</g>
+<g >
+<title>do_futex (577,809,542 us, 6.04%)</title><rect x="1117.4" y="949" width="71.3" height="15.0" fill="rgb(136,136,252)" rx="2" ry="2" />
+<text  x="1120.45" y="959.5" >do_futex</text>
+</g>
+<g >
+<title>start_secondary (869,791,475 us, 9.08%)</title><rect x="10.1" y="725" width="107.2" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="13.14" y="735.5" >start_secondary</text>
+</g>
+<g >
+<title>rocksdb:low4 (954,444,856 us, 9.97%)</title><rect x="782.3" y="1045" width="117.6" height="15.0" fill="rgb(125,125,242)" rx="2" ry="2" />
+<text  x="785.29" y="1055.5" >rocksdb:low4</text>
+</g>
+<g >
+<title>[unknown] (12,185,000 us, 0.13%)</title><rect x="654.9" y="933" width="1.5" height="15.0" fill="rgb(114,114,233)" rx="2" ry="2" />
+<text  x="657.94" y="943.5" ></text>
+</g>
+<g >
+<title>do_futex (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="853" width="135.4" height="15.0" fill="rgb(77,189,189)" rx="2" ry="2" />
+<text  x="422.28" y="863.5" >do_futex</text>
+</g>
+<g >
+<title>[unknown] (11,375,368 us, 0.12%)</title><rect x="417.9" y="1013" width="1.4" height="15.0" fill="rgb(115,115,234)" rx="2" ry="2" />
+<text  x="420.87" y="1023.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,397,413 us, 0.11%)</title><rect x="1188.7" y="917" width="1.3" height="15.0" fill="rgb(80,80,205)" rx="2" ry="2" />
+<text  x="1191.72" y="927.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter (3,937,710 us, 0.04%)</title><rect x="655.0" y="245" width="0.5" height="15.0" fill="rgb(64,178,178)" rx="2" ry="2" />
+<text  x="657.99" y="255.5" ></text>
+</g>
+<g >
+<title>ext4_ext_map_blocks (1,064,943 us, 0.01%)</title><rect x="10.0" y="901" width="0.1" height="15.0" fill="rgb(83,83,207)" rx="2" ry="2" />
+<text  x="13.00" y="911.5" ></text>
+</g>
+<g >
+<title> (7,176,391 us, 0.07%)</title><rect x="655.5" y="549" width="0.9" height="15.0" fill="rgb(79,192,192)" rx="2" ry="2" />
+<text  x="658.50" y="559.5" ></text>
+</g>
+<g >
+<title>sys_futex (803,483,865 us, 8.39%)</title><rect x="555.9" y="837" width="99.0" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="558.91" y="847.5" >sys_futex</text>
+</g>
+<g >
+<title>file_write_and_wait_range (4,087,291 us, 0.04%)</title><rect x="655.0" y="741" width="0.5" height="15.0" fill="rgb(107,107,228)" rx="2" ry="2" />
+<text  x="657.99" y="751.5" ></text>
+</g>
+<g >
+<title>do_futex (803,483,865 us, 8.39%)</title><rect x="555.9" y="853" width="99.0" height="15.0" fill="rgb(82,194,194)" rx="2" ry="2" />
+<text  x="558.91" y="863.5" >do_futex</text>
+</g>
+<g >
+<title>handle_irq (2,598,217 us, 0.03%)</title><rect x="554.8" y="309" width="0.3" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="557.75" y="319.5" ></text>
+</g>
+<g >
+<title>__wake_up (2,424,459 us, 0.03%)</title><rect x="344.1" y="629" width="0.3" height="15.0" fill="rgb(81,194,194)" rx="2" ry="2" />
+<text  x="347.08" y="639.5" ></text>
+</g>
+<g >
+<title>swapper/1 (6,748,111 us, 0.07%)</title><rect x="10.1" y="677" width="0.9" height="15.0" fill="rgb(64,177,177)" rx="2" ry="2" />
+<text  x="13.14" y="687.5" ></text>
+</g>
+<g >
+<title>kjournald2 (2,424,459 us, 0.03%)</title><rect x="344.1" y="597" width="0.3" height="15.0" fill="rgb(68,182,182)" rx="2" ry="2" />
+<text  x="347.08" y="607.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,098,714,905 us, 11.48%)</title><rect x="419.3" y="981" width="135.4" height="15.0" fill="rgb(117,117,236)" rx="2" ry="2" />
+<text  x="422.28" y="991.5" >do_syscall_64</text>
+</g>
+<g >
+<title>[unknown] (588,695,704 us, 6.15%)</title><rect x="1117.4" y="1029" width="72.6" height="15.0" fill="rgb(137,137,252)" rx="2" ry="2" />
+<text  x="1120.44" y="1039.5" >[unknown]</text>
+</g>
+<g >
+<title>__wake_up_common_lock (9,158,102 us, 0.10%)</title><rect x="1116.2" y="645" width="1.2" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="1119.25" y="655.5" ></text>
+</g>
+<g >
+<title>futex_wake (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="869" width="135.4" height="15.0" fill="rgb(64,178,178)" rx="2" ry="2" />
+<text  x="422.28" y="879.5" >futex_wake</text>
+</g>
+<g >
+<title>ext4_sync_file (9,892,321 us, 0.10%)</title><rect x="1188.7" y="757" width="1.2" height="15.0" fill="rgb(97,97,219)" rx="2" ry="2" />
+<text  x="1191.72" y="767.5" ></text>
+</g>
+<g >
+<title>start_secondary (2,371,603 us, 0.02%)</title><rect x="344.4" y="165" width="0.3" height="15.0" fill="rgb(94,205,205)" rx="2" ry="2" />
+<text  x="347.39" y="175.5" ></text>
+</g>
+<g >
+<title> (10,487,620 us, 0.11%)</title><rect x="417.9" y="853" width="1.3" height="15.0" fill="rgb(109,109,229)" rx="2" ry="2" />
+<text  x="420.93" y="863.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (667,286,698 us, 6.97%)</title><rect x="899.9" y="805" width="82.3" height="15.0" fill="rgb(109,219,219)" rx="2" ry="2" />
+<text  x="902.92" y="815.5" >entry_SYS..</text>
+</g>
+<g >
+<title>do_syscall_64 (577,809,969 us, 6.04%)</title><rect x="1117.4" y="981" width="71.3" height="15.0" fill="rgb(113,113,233)" rx="2" ry="2" />
+<text  x="1120.45" y="991.5" >do_sysca..</text>
+</g>
+<g >
+<title>sys_futex (954,444,847 us, 9.97%)</title><rect x="782.3" y="837" width="117.6" height="15.0" fill="rgb(63,177,177)" rx="2" ry="2" />
+<text  x="785.29" y="847.5" >sys_futex</text>
+</g>
+<g >
+<title>start_secondary (1,850,666 us, 0.02%)</title><rect x="1188.7" y="181" width="0.3" height="15.0" fill="rgb(63,177,177)" rx="2" ry="2" />
+<text  x="1191.72" y="191.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,641,330 us, 0.12%)</title><rect x="1116.0" y="997" width="1.4" height="15.0" fill="rgb(132,132,248)" rx="2" ry="2" />
+<text  x="1119.01" y="1007.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (3,937,710 us, 0.04%)</title><rect x="655.0" y="261" width="0.5" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="657.99" y="271.5" ></text>
+</g>
+<g >
+<title>__wake_up (9,158,102 us, 0.10%)</title><rect x="1116.2" y="629" width="1.2" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="1119.25" y="639.5" ></text>
+</g>
+<g >
+<title>start_secondary (1,037,769 us, 0.01%)</title><rect x="10.0" y="197" width="0.1" height="15.0" fill="rgb(53,168,168)" rx="2" ry="2" />
+<text  x="13.00" y="207.5" ></text>
+</g>
+<g >
+<title>io_schedule (1,064,943 us, 0.01%)</title><rect x="10.0" y="741" width="0.1" height="15.0" fill="rgb(88,88,212)" rx="2" ry="2" />
+<text  x="13.00" y="751.5" ></text>
+</g>
+<g >
+<title>do_futex (577,809,533 us, 6.04%)</title><rect x="1117.4" y="853" width="71.3" height="15.0" fill="rgb(60,174,174)" rx="2" ry="2" />
+<text  x="1120.45" y="863.5" >do_futex</text>
+</g>
+<g >
+<title>autoremove_wake_function (7,176,391 us, 0.07%)</title><rect x="655.5" y="677" width="0.9" height="15.0" fill="rgb(85,197,197)" rx="2" ry="2" />
+<text  x="658.50" y="687.5" ></text>
+</g>
+<g >
+<title>ext4_fallocate (1,064,943 us, 0.01%)</title><rect x="10.0" y="949" width="0.1" height="15.0" fill="rgb(85,85,209)" rx="2" ry="2" />
+<text  x="13.00" y="959.5" ></text>
+</g>
+<g >
+<title>file_write_and_wait_range (2,681,601 us, 0.03%)</title><rect x="554.8" y="741" width="0.3" height="15.0" fill="rgb(100,100,222)" rx="2" ry="2" />
+<text  x="557.75" y="751.5" ></text>
+</g>
+<g >
+<title>__wake_up_common_lock (6,291,311 us, 0.07%)</title><rect x="555.1" y="645" width="0.8" height="15.0" fill="rgb(56,170,170)" rx="2" ry="2" />
+<text  x="558.08" y="655.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (2,426,570 us, 0.03%)</title><rect x="344.1" y="853" width="0.3" height="15.0" fill="rgb(80,80,205)" rx="2" ry="2" />
+<text  x="347.08" y="863.5" ></text>
+</g>
+<g >
+<title>schedule (6,357,641 us, 0.07%)</title><rect x="344.9" y="693" width="0.8" height="15.0" fill="rgb(96,96,218)" rx="2" ry="2" />
+<text  x="347.88" y="703.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (1,900,842 us, 0.02%)</title><rect x="982.2" y="645" width="0.3" height="15.0" fill="rgb(104,214,214)" rx="2" ry="2" />
+<text  x="985.23" y="655.5" ></text>
+</g>
+<g >
+<title>handle_irq_event (1,037,769 us, 0.01%)</title><rect x="10.0" y="357" width="0.1" height="15.0" fill="rgb(72,185,185)" rx="2" ry="2" />
+<text  x="13.00" y="367.5" ></text>
+</g>
+<g >
+<title>jbd2_complete_transaction (9,158,102 us, 0.10%)</title><rect x="1116.2" y="741" width="1.2" height="15.0" fill="rgb(105,105,225)" rx="2" ry="2" />
+<text  x="1119.25" y="751.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (6,291,311 us, 0.07%)</title><rect x="555.1" y="677" width="0.8" height="15.0" fill="rgb(82,195,195)" rx="2" ry="2" />
+<text  x="558.08" y="687.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (667,286,819 us, 6.97%)</title><rect x="899.9" y="997" width="82.3" height="15.0" fill="rgb(111,111,231)" rx="2" ry="2" />
+<text  x="902.92" y="1007.5" >entry_SYS..</text>
+</g>
+<g >
+<title>io_schedule (4,029,974 us, 0.04%)</title><rect x="417.9" y="693" width="0.5" height="15.0" fill="rgb(84,84,208)" rx="2" ry="2" />
+<text  x="420.93" y="703.5" ></text>
+</g>
+<g >
+<title>schedule (1,900,842 us, 0.02%)</title><rect x="982.2" y="677" width="0.3" height="15.0" fill="rgb(80,80,205)" rx="2" ry="2" />
+<text  x="985.23" y="687.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (4,029,424 us, 0.04%)</title><rect x="417.9" y="261" width="0.5" height="15.0" fill="rgb(83,195,195)" rx="2" ry="2" />
+<text  x="420.93" y="271.5" ></text>
+</g>
+<g >
+<title>nvme_complete_rq (3,937,884 us, 0.04%)</title><rect x="655.0" y="469" width="0.5" height="15.0" fill="rgb(66,180,180)" rx="2" ry="2" />
+<text  x="657.99" y="479.5" ></text>
+</g>
+<g >
+<title>jbd2_complete_transaction (5,759,936 us, 0.06%)</title><rect x="781.5" y="741" width="0.7" height="15.0" fill="rgb(89,89,213)" rx="2" ry="2" />
+<text  x="784.53" y="751.5" ></text>
+</g>
+<g >
+<title>nvme_process_cq (2,372,031 us, 0.02%)</title><rect x="344.4" y="389" width="0.3" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="347.39" y="399.5" ></text>
+</g>
+<g >
+<title>handle_irq (1,160,398 us, 0.01%)</title><rect x="344.7" y="197" width="0.2" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="347.73" y="207.5" ></text>
+</g>
+<g >
+<title>handle_edge_irq (1,850,852 us, 0.02%)</title><rect x="1188.7" y="325" width="0.3" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="1191.72" y="335.5" ></text>
+</g>
+<g >
+<title>nvme_process_cq (1,850,852 us, 0.02%)</title><rect x="1188.7" y="405" width="0.3" height="15.0" fill="rgb(71,184,184)" rx="2" ry="2" />
+<text  x="1191.72" y="415.5" ></text>
+</g>
+<g >
+<title> (2,198,241 us, 0.02%)</title><rect x="345.7" y="501" width="0.2" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="348.66" y="511.5" ></text>
+</g>
+<g >
+<title>start_secondary (3,304,144 us, 0.03%)</title><rect x="781.1" y="181" width="0.4" height="15.0" fill="rgb(54,169,169)" rx="2" ry="2" />
+<text  x="784.11" y="191.5" ></text>
+</g>
+<g >
+<title>do_IRQ (1,850,852 us, 0.02%)</title><rect x="1188.7" y="293" width="0.3" height="15.0" fill="rgb(78,191,191)" rx="2" ry="2" />
+<text  x="1191.72" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,867,421 us, 0.11%)</title><rect x="1188.7" y="981" width="1.3" height="15.0" fill="rgb(95,95,217)" rx="2" ry="2" />
+<text  x="1191.66" y="991.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (10,548,980 us, 0.11%)</title><rect x="1116.1" y="773" width="1.3" height="15.0" fill="rgb(96,96,219)" rx="2" ry="2" />
+<text  x="1119.08" y="783.5" ></text>
+</g>
+<g >
+<title>futex_wait (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="933" width="124.7" height="15.0" fill="rgb(122,122,240)" rx="2" ry="2" />
+<text  x="659.44" y="943.5" >futex_wait</text>
+</g>
+<g >
+<title>ext4_io_submit (1,160,469 us, 0.01%)</title><rect x="344.7" y="613" width="0.2" height="15.0" fill="rgb(86,86,210)" rx="2" ry="2" />
+<text  x="347.73" y="623.5" ></text>
+</g>
+<g >
+<title>ext4_mb_regular_allocator (1,064,943 us, 0.01%)</title><rect x="10.0" y="869" width="0.1" height="15.0" fill="rgb(133,133,249)" rx="2" ry="2" />
+<text  x="13.00" y="879.5" ></text>
+</g>
+<g >
+<title>rocksdb:low1 (108,888,565 us, 1.14%)</title><rect x="1147.0" y="773" width="13.4" height="15.0" fill="rgb(54,168,168)" rx="2" ry="2" />
+<text  x="1149.97" y="783.5" ></text>
+</g>
+<g >
+<title>-- (667,286,698 us, 6.97%)</title><rect x="899.9" y="885" width="82.3" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="902.92" y="895.5" >--</text>
+</g>
+<g >
+<title>__wake_up (5,759,902 us, 0.06%)</title><rect x="781.5" y="629" width="0.7" height="15.0" fill="rgb(81,193,193)" rx="2" ry="2" />
+<text  x="784.53" y="639.5" ></text>
+</g>
+<g >
+<title>rocksdb:low0 (595,095,393 us, 6.22%)</title><rect x="345.9" y="1045" width="73.4" height="15.0" fill="rgb(133,133,249)" rx="2" ry="2" />
+<text  x="348.93" y="1055.5" >rocksdb:..</text>
+</g>
+<g >
+<title>start_secondary (1,900,753 us, 0.02%)</title><rect x="982.2" y="181" width="0.3" height="15.0" fill="rgb(98,209,209)" rx="2" ry="2" />
+<text  x="985.23" y="191.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,104,880 us, 0.12%)</title><rect x="982.2" y="981" width="1.3" height="15.0" fill="rgb(128,128,245)" rx="2" ry="2" />
+<text  x="985.16" y="991.5" ></text>
+</g>
+<g >
+<title> (7,999,101 us, 0.08%)</title><rect x="1189.0" y="549" width="0.9" height="15.0" fill="rgb(59,173,173)" rx="2" ry="2" />
+<text  x="1191.96" y="559.5" ></text>
+</g>
+<g >
+<title>__wake_up (7,176,391 us, 0.07%)</title><rect x="655.5" y="629" width="0.9" height="15.0" fill="rgb(88,199,199)" rx="2" ry="2" />
+<text  x="658.50" y="639.5" ></text>
+</g>
+<g >
+<title>handle_edge_irq (1,037,769 us, 0.01%)</title><rect x="10.0" y="341" width="0.1" height="15.0" fill="rgb(68,181,181)" rx="2" ry="2" />
+<text  x="13.00" y="351.5" ></text>
+</g>
+<g >
+<title>rocksdb:low5 (172,239,130 us, 1.80%)</title><rect x="714.9" y="773" width="21.2" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="717.90" y="783.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (2,598,217 us, 0.03%)</title><rect x="554.8" y="357" width="0.3" height="15.0" fill="rgb(66,180,180)" rx="2" ry="2" />
+<text  x="557.75" y="367.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (10,487,439 us, 0.11%)</title><rect x="417.9" y="773" width="1.3" height="15.0" fill="rgb(92,92,215)" rx="2" ry="2" />
+<text  x="420.93" y="783.5" ></text>
+</g>
+<g >
+<title>do_IRQ (2,372,031 us, 0.02%)</title><rect x="344.4" y="277" width="0.3" height="15.0" fill="rgb(105,215,215)" rx="2" ry="2" />
+<text  x="347.39" y="287.5" ></text>
+</g>
+<g >
+<title>rocksdb:low2 (120,313,005 us, 1.26%)</title><rect x="1160.4" y="773" width="14.8" height="15.0" fill="rgb(107,217,217)" rx="2" ry="2" />
+<text  x="1163.39" y="783.5" ></text>
+</g>
+<g >
+<title>swapper/39 (9,839,813 us, 0.10%)</title><rect x="116.1" y="677" width="1.2" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="119.13" y="687.5" ></text>
+</g>
+<g >
+<title>do_futex (954,444,856 us, 9.97%)</title><rect x="782.3" y="949" width="117.6" height="15.0" fill="rgb(127,127,244)" rx="2" ry="2" />
+<text  x="785.29" y="959.5" >do_futex</text>
+</g>
+<g >
+<title>__wake_up_common (1,380,274 us, 0.01%)</title><rect x="1116.1" y="613" width="0.1" height="15.0" fill="rgb(66,179,179)" rx="2" ry="2" />
+<text  x="1119.08" y="623.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,919,118 us, 0.10%)</title><rect x="781.1" y="981" width="1.2" height="15.0" fill="rgb(138,138,254)" rx="2" ry="2" />
+<text  x="784.06" y="991.5" ></text>
+</g>
+<g >
+<title>handle_edge_irq (4,029,959 us, 0.04%)</title><rect x="417.9" y="325" width="0.5" height="15.0" fill="rgb(106,217,217)" rx="2" ry="2" />
+<text  x="420.93" y="335.5" ></text>
+</g>
+<g >
+<title>swapper/14 (840,609 us, 0.01%)</title><rect x="1188.7" y="133" width="0.1" height="15.0" fill="rgb(103,214,214)" rx="2" ry="2" />
+<text  x="1191.72" y="143.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (6,377,369 us, 0.07%)</title><rect x="418.4" y="725" width="0.8" height="15.0" fill="rgb(137,137,252)" rx="2" ry="2" />
+<text  x="421.44" y="735.5" ></text>
+</g>
+<g >
+<title>__filemap_fdatawait_range (4,029,974 us, 0.04%)</title><rect x="417.9" y="725" width="0.5" height="15.0" fill="rgb(93,93,216)" rx="2" ry="2" />
+<text  x="420.93" y="735.5" ></text>
+</g>
+<g >
+<title>schedule (1,850,864 us, 0.02%)</title><rect x="1188.7" y="677" width="0.3" height="15.0" fill="rgb(91,91,214)" rx="2" ry="2" />
+<text  x="1191.72" y="687.5" ></text>
+</g>
+<g >
+<title>ret_from_intr (3,304,210 us, 0.03%)</title><rect x="781.1" y="277" width="0.4" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="784.11" y="287.5" ></text>
+</g>
+<g >
+<title>-- (9,158,102 us, 0.10%)</title><rect x="1116.2" y="693" width="1.2" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="1119.25" y="703.5" ></text>
+</g>
+<g >
+<title>rocksdb:low6 (188,301,586 us, 1.97%)</title><rect x="736.1" y="773" width="23.2" height="15.0" fill="rgb(66,180,180)" rx="2" ry="2" />
+<text  x="739.13" y="783.5" >r..</text>
+</g>
+<g >
+<title>-- (6,291,342 us, 0.07%)</title><rect x="555.1" y="693" width="0.8" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="558.08" y="703.5" ></text>
+</g>
+<g >
+<title>end_page_writeback (1,380,274 us, 0.01%)</title><rect x="1116.1" y="565" width="0.1" height="15.0" fill="rgb(91,202,202)" rx="2" ry="2" />
+<text  x="1119.08" y="575.5" ></text>
+</g>
+<g >
+<title>call_cpuidle (1,379,978 us, 0.01%)</title><rect x="1116.1" y="229" width="0.1" height="15.0" fill="rgb(59,173,173)" rx="2" ry="2" />
+<text  x="1119.08" y="239.5" ></text>
+</g>
+<g >
+<title>swapper/34 (958,395 us, 0.01%)</title><rect x="1116.1" y="133" width="0.1" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="1119.13" y="143.5" ></text>
+</g>
+<g >
+<title>ext4_alloc_file_blocks (1,064,943 us, 0.01%)</title><rect x="10.0" y="933" width="0.1" height="15.0" fill="rgb(90,90,213)" rx="2" ry="2" />
+<text  x="13.00" y="943.5" ></text>
+</g>
+<g >
+<title>swapper/25 (161,112,120 us, 1.68%)</title><rect x="75.3" y="677" width="19.9" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="78.31" y="687.5" ></text>
+</g>
+<g >
+<title>ext4_force_commit (2,424,459 us, 0.03%)</title><rect x="344.1" y="773" width="0.3" height="15.0" fill="rgb(95,95,218)" rx="2" ry="2" />
+<text  x="347.08" y="783.5" ></text>
+</g>
+<g >
+<title>do_futex (803,483,865 us, 8.39%)</title><rect x="555.9" y="949" width="99.0" height="15.0" fill="rgb(110,110,230)" rx="2" ry="2" />
+<text  x="558.91" y="959.5" >do_futex</text>
+</g>
+<g >
+<title>__wake_up_locked_key_bookmark (2,372,031 us, 0.02%)</title><rect x="344.4" y="581" width="0.3" height="15.0" fill="rgb(51,166,166)" rx="2" ry="2" />
+<text  x="347.39" y="591.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (577,809,533 us, 6.04%)</title><rect x="1117.4" y="821" width="71.3" height="15.0" fill="rgb(95,207,207)" rx="2" ry="2" />
+<text  x="1120.45" y="831.5" >do_sysca..</text>
+</g>
+<g >
+<title>wake_up_bit (1,037,769 us, 0.01%)</title><rect x="10.0" y="597" width="0.1" height="15.0" fill="rgb(82,194,194)" rx="2" ry="2" />
+<text  x="13.00" y="607.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,420,651 us, 0.10%)</title><rect x="554.7" y="901" width="1.2" height="15.0" fill="rgb(86,86,210)" rx="2" ry="2" />
+<text  x="557.74" y="911.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,092,766 us, 0.12%)</title><rect x="1116.1" y="869" width="1.3" height="15.0" fill="rgb(125,125,243)" rx="2" ry="2" />
+<text  x="1119.08" y="879.5" ></text>
+</g>
+<g >
+<title>jbd2_complete_transaction (8,160,102 us, 0.09%)</title><rect x="982.5" y="741" width="1.0" height="15.0" fill="rgb(96,96,218)" rx="2" ry="2" />
+<text  x="985.46" y="751.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,011,138,768 us, 10.56%)</title><rect x="656.4" y="981" width="124.7" height="15.0" fill="rgb(97,97,219)" rx="2" ry="2" />
+<text  x="659.44" y="991.5" >do_syscall_64</text>
+</g>
+<g >
+<title> (2,371,603 us, 0.02%)</title><rect x="344.4" y="133" width="0.3" height="15.0" fill="rgb(65,178,178)" rx="2" ry="2" />
+<text  x="347.39" y="143.5" ></text>
+</g>
+<g >
+<title>blk_update_request (4,029,959 us, 0.04%)</title><rect x="417.9" y="501" width="0.5" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="420.93" y="511.5" ></text>
+</g>
+<g >
+<title>schedule (4,029,974 us, 0.04%)</title><rect x="417.9" y="677" width="0.5" height="15.0" fill="rgb(84,84,208)" rx="2" ry="2" />
+<text  x="420.93" y="687.5" ></text>
+</g>
+<g >
+<title>end_page_writeback (2,598,217 us, 0.03%)</title><rect x="554.8" y="565" width="0.3" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="557.75" y="575.5" ></text>
+</g>
+<g >
+<title>secondary_startup_64 (1,160,398 us, 0.01%)</title><rect x="344.7" y="53" width="0.2" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="347.73" y="63.5" ></text>
+</g>
+<g >
+<title>-- (3,304,717 us, 0.03%)</title><rect x="781.1" y="661" width="0.4" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="784.11" y="671.5" ></text>
+</g>
+<g >
+<title>__wake_up (6,357,601 us, 0.07%)</title><rect x="344.9" y="613" width="0.8" height="15.0" fill="rgb(104,214,214)" rx="2" ry="2" />
+<text  x="347.88" y="623.5" ></text>
+</g>
+<g >
+<title>futex_wait (577,809,542 us, 6.04%)</title><rect x="1117.4" y="933" width="71.3" height="15.0" fill="rgb(136,136,252)" rx="2" ry="2" />
+<text  x="1120.45" y="943.5" >futex_wait</text>
+</g>
+<g >
+<title>ext4_end_bio (4,029,959 us, 0.04%)</title><rect x="417.9" y="533" width="0.5" height="15.0" fill="rgb(88,200,200)" rx="2" ry="2" />
+<text  x="420.93" y="543.5" ></text>
+</g>
+<g >
+<title>swapper/21 (118,461,404 us, 1.24%)</title><rect x="56.9" y="677" width="14.6" height="15.0" fill="rgb(74,187,187)" rx="2" ry="2" />
+<text  x="59.86" y="687.5" ></text>
+</g>
+<g >
+<title> (1,850,666 us, 0.02%)</title><rect x="1188.7" y="149" width="0.3" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="1191.72" y="159.5" ></text>
+</g>
+<g >
+<title>__wake_up_common_lock (1,160,398 us, 0.01%)</title><rect x="344.7" y="453" width="0.2" height="15.0" fill="rgb(82,194,194)" rx="2" ry="2" />
+<text  x="347.73" y="463.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (7,176,391 us, 0.07%)</title><rect x="655.5" y="613" width="0.9" height="15.0" fill="rgb(103,214,214)" rx="2" ry="2" />
+<text  x="658.50" y="623.5" ></text>
+</g>
+<g >
+<title> (9,158,102 us, 0.10%)</title><rect x="1116.2" y="549" width="1.2" height="15.0" fill="rgb(85,197,197)" rx="2" ry="2" />
+<text  x="1119.25" y="559.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (803,484,042 us, 8.39%)</title><rect x="555.9" y="997" width="99.0" height="15.0" fill="rgb(96,96,219)" rx="2" ry="2" />
+<text  x="558.91" y="1007.5" >entry_SYSCA..</text>
+</g>
+<g >
+<title>[unknown] (10,578,062 us, 0.11%)</title><rect x="982.2" y="885" width="1.3" height="15.0" fill="rgb(90,90,213)" rx="2" ry="2" />
+<text  x="985.23" y="895.5" ></text>
+</g>
+<g >
+<title>handle_irq_event_percpu (1,900,842 us, 0.02%)</title><rect x="982.2" y="357" width="0.3" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="985.23" y="367.5" ></text>
+</g>
+<g >
+<title>wake_up_page_bit (1,850,852 us, 0.02%)</title><rect x="1188.7" y="581" width="0.3" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="1191.72" y="591.5" ></text>
+</g>
+<g >
+<title>wait_on_page_bit_common (2,598,219 us, 0.03%)</title><rect x="554.8" y="709" width="0.3" height="15.0" fill="rgb(97,97,219)" rx="2" ry="2" />
+<text  x="557.75" y="719.5" ></text>
+</g>
+<g >
+<title>handle_irq_event (3,304,210 us, 0.03%)</title><rect x="781.1" y="341" width="0.4" height="15.0" fill="rgb(56,170,170)" rx="2" ry="2" />
+<text  x="784.11" y="351.5" ></text>
+</g>
+<g >
+<title>kjournald2 (7,176,391 us, 0.07%)</title><rect x="655.5" y="597" width="0.9" height="15.0" fill="rgb(80,193,193)" rx="2" ry="2" />
+<text  x="658.50" y="607.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,867,445 us, 0.11%)</title><rect x="1188.7" y="997" width="1.3" height="15.0" fill="rgb(101,101,223)" rx="2" ry="2" />
+<text  x="1191.66" y="1007.5" ></text>
+</g>
+<g >
+<title>do_fsync (10,548,980 us, 0.11%)</title><rect x="1116.1" y="789" width="1.3" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="1119.08" y="799.5" ></text>
+</g>
+<g >
+<title>start_secondary (1,379,978 us, 0.01%)</title><rect x="1116.1" y="181" width="0.1" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="1119.08" y="191.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (5,759,902 us, 0.06%)</title><rect x="781.5" y="661" width="0.7" height="15.0" fill="rgb(64,177,177)" rx="2" ry="2" />
+<text  x="784.53" y="671.5" ></text>
+</g>
+<g >
+<title>__wake_up_locked_key_bookmark (1,380,274 us, 0.01%)</title><rect x="1116.1" y="597" width="0.1" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="1119.08" y="607.5" ></text>
+</g>
+<g >
+<title>do_idle (1,160,398 us, 0.01%)</title><rect x="344.7" y="101" width="0.2" height="15.0" fill="rgb(98,209,209)" rx="2" ry="2" />
+<text  x="347.73" y="111.5" ></text>
+</g>
+<g >
+<title>[unknown] (15,022,656 us, 0.16%)</title><rect x="344.1" y="901" width="1.8" height="15.0" fill="rgb(92,92,215)" rx="2" ry="2" />
+<text  x="347.08" y="911.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (2,372,031 us, 0.02%)</title><rect x="344.4" y="597" width="0.3" height="15.0" fill="rgb(61,175,175)" rx="2" ry="2" />
+<text  x="347.39" y="607.5" ></text>
+</g>
+<g >
+<title>[unknown] (15,033,584 us, 0.16%)</title><rect x="344.1" y="1013" width="1.8" height="15.0" fill="rgb(117,117,236)" rx="2" ry="2" />
+<text  x="347.08" y="1023.5" ></text>
+</g>
+<g >
+<title>do_fsync (10,071,740 us, 0.11%)</title><rect x="982.2" y="789" width="1.3" height="15.0" fill="rgb(129,129,246)" rx="2" ry="2" />
+<text  x="985.23" y="799.5" ></text>
+</g>
+<g >
+<title>schedule (3,304,717 us, 0.03%)</title><rect x="781.1" y="677" width="0.4" height="15.0" fill="rgb(94,94,217)" rx="2" ry="2" />
+<text  x="784.11" y="687.5" ></text>
+</g>
+<g >
+<title>kjournald2 (6,357,601 us, 0.07%)</title><rect x="344.9" y="581" width="0.8" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="347.88" y="591.5" ></text>
+</g>
+<g >
+<title>__wake_up (6,377,330 us, 0.07%)</title><rect x="418.4" y="629" width="0.8" height="15.0" fill="rgb(53,168,168)" rx="2" ry="2" />
+<text  x="421.44" y="639.5" ></text>
+</g>
+<g >
+<title>do_futex (1,839,468,120 us, 19.21%)</title><rect x="117.4" y="949" width="226.7" height="15.0" fill="rgb(102,102,223)" rx="2" ry="2" />
+<text  x="120.37" y="959.5" >do_futex</text>
+</g>
+<g >
+<title>blk_update_request (2,598,217 us, 0.03%)</title><rect x="554.8" y="501" width="0.3" height="15.0" fill="rgb(94,206,206)" rx="2" ry="2" />
+<text  x="557.75" y="511.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="821" width="124.7" height="15.0" fill="rgb(100,210,210)" rx="2" ry="2" />
+<text  x="659.44" y="831.5" >do_syscall_64</text>
+</g>
+<g >
+<title>[unknown] (9,919,100 us, 0.10%)</title><rect x="781.1" y="965" width="1.2" height="15.0" fill="rgb(127,127,244)" rx="2" ry="2" />
+<text  x="784.06" y="975.5" ></text>
+</g>
+<g >
+<title>-- (2,372,032 us, 0.02%)</title><rect x="344.4" y="645" width="0.3" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="347.39" y="655.5" ></text>
+</g>
+<g >
+<title>rocksdb:low7 (265,399,656 us, 2.77%)</title><rect x="522.0" y="773" width="32.7" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="524.99" y="783.5" >ro..</text>
+</g>
+<g >
+<title> (1,074,850,444 us, 11.23%)</title><rect x="983.5" y="1013" width="132.5" height="15.0" fill="rgb(130,130,247)" rx="2" ry="2" />
+<text  x="986.53" y="1023.5" ></text>
+</g>
+<g >
+<title>rocksdb:high0 (177,354,175 us, 1.85%)</title><rect x="983.5" y="773" width="21.9" height="15.0" fill="rgb(103,214,214)" rx="2" ry="2" />
+<text  x="986.53" y="783.5" >r..</text>
+</g>
+<g >
+<title>io_schedule (2,372,032 us, 0.02%)</title><rect x="344.4" y="677" width="0.3" height="15.0" fill="rgb(107,107,228)" rx="2" ry="2" />
+<text  x="347.39" y="687.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (1,850,852 us, 0.02%)</title><rect x="1188.7" y="613" width="0.3" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="1191.72" y="623.5" ></text>
+</g>
+<g >
+<title>sys_futex (803,483,865 us, 8.39%)</title><rect x="555.9" y="965" width="99.0" height="15.0" fill="rgb(124,124,242)" rx="2" ry="2" />
+<text  x="558.91" y="975.5" >sys_futex</text>
+</g>
+<g >
+<title>blk_mq_complete_request (1,900,842 us, 0.02%)</title><rect x="982.2" y="421" width="0.3" height="15.0" fill="rgb(85,197,197)" rx="2" ry="2" />
+<text  x="985.23" y="431.5" ></text>
+</g>
+<g >
+<title>-- (5,759,936 us, 0.06%)</title><rect x="781.5" y="693" width="0.7" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="784.53" y="703.5" ></text>
+</g>
+<g >
+<title> (8,160,088 us, 0.09%)</title><rect x="982.5" y="549" width="1.0" height="15.0" fill="rgb(100,211,211)" rx="2" ry="2" />
+<text  x="985.46" y="559.5" ></text>
+</g>
+<g >
+<title>blk_update_request (1,900,842 us, 0.02%)</title><rect x="982.2" y="501" width="0.3" height="15.0" fill="rgb(90,202,202)" rx="2" ry="2" />
+<text  x="985.23" y="511.5" ></text>
+</g>
+<g >
+<title>wait_on_page_bit_common (3,304,717 us, 0.03%)</title><rect x="781.1" y="709" width="0.4" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="784.11" y="719.5" ></text>
+</g>
+<g >
+<title>blk_mq_end_request (1,900,842 us, 0.02%)</title><rect x="982.2" y="485" width="0.3" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="985.23" y="495.5" ></text>
+</g>
+<g >
+<title>file_write_and_wait_range (1,911,638 us, 0.02%)</title><rect x="982.2" y="741" width="0.3" height="15.0" fill="rgb(117,117,236)" rx="2" ry="2" />
+<text  x="985.23" y="751.5" ></text>
+</g>
+<g >
+<title>rocksdb:low2 (151,943,675 us, 1.59%)</title><rect x="809.0" y="773" width="18.7" height="15.0" fill="rgb(106,216,216)" rx="2" ry="2" />
+<text  x="811.96" y="783.5" ></text>
+</g>
+<g >
+<title>sys_fdatasync (8,972,943 us, 0.09%)</title><rect x="554.8" y="805" width="1.1" height="15.0" fill="rgb(100,100,222)" rx="2" ry="2" />
+<text  x="557.75" y="815.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (1,380,274 us, 0.01%)</title><rect x="1116.1" y="645" width="0.1" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="1119.08" y="655.5" ></text>
+</g>
+<g >
+<title>bio_endio (1,850,852 us, 0.02%)</title><rect x="1188.7" y="517" width="0.3" height="15.0" fill="rgb(89,201,201)" rx="2" ry="2" />
+<text  x="1191.72" y="527.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (9,892,393 us, 0.10%)</title><rect x="1188.7" y="821" width="1.2" height="15.0" fill="rgb(102,102,223)" rx="2" ry="2" />
+<text  x="1191.72" y="831.5" ></text>
+</g>
+<g >
+<title>handle_irq_event (1,900,842 us, 0.02%)</title><rect x="982.2" y="341" width="0.3" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="985.23" y="351.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (6,291,342 us, 0.07%)</title><rect x="555.1" y="725" width="0.8" height="15.0" fill="rgb(135,135,251)" rx="2" ry="2" />
+<text  x="558.08" y="735.5" ></text>
+</g>
+<g >
+<title>__wake_up_common (7,999,101 us, 0.08%)</title><rect x="1189.0" y="661" width="0.9" height="15.0" fill="rgb(84,196,196)" rx="2" ry="2" />
+<text  x="1191.96" y="671.5" ></text>
+</g>
+<g >
+<title>ret_from_fork (7,999,101 us, 0.08%)</title><rect x="1189.0" y="565" width="0.9" height="15.0" fill="rgb(81,193,193)" rx="2" ry="2" />
+<text  x="1191.96" y="575.5" ></text>
+</g>
+<g >
+<title>-- (7,176,391 us, 0.07%)</title><rect x="655.5" y="693" width="0.9" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="658.50" y="703.5" ></text>
+</g>
+<g >
+<title>ext4_end_bio (2,372,031 us, 0.02%)</title><rect x="344.4" y="517" width="0.3" height="15.0" fill="rgb(70,184,184)" rx="2" ry="2" />
+<text  x="347.39" y="527.5" ></text>
+</g>
+<g >
+<title>schedule (9,158,102 us, 0.10%)</title><rect x="1116.2" y="709" width="1.2" height="15.0" fill="rgb(139,139,254)" rx="2" ry="2" />
+<text  x="1119.25" y="719.5" ></text>
+</g>
+<g >
+<title>rocksdb:low1 (114,114,661 us, 1.19%)</title><rect x="1023.2" y="773" width="14.0" height="15.0" fill="rgb(97,208,208)" rx="2" ry="2" />
+<text  x="1026.17" y="783.5" ></text>
+</g>
+<g >
+<title>ext4_finish_bio (1,380,274 us, 0.01%)</title><rect x="1116.1" y="549" width="0.1" height="15.0" fill="rgb(92,203,203)" rx="2" ry="2" />
+<text  x="1119.08" y="559.5" ></text>
+</g>
+<g >
+<title>__wake_up (2,198,241 us, 0.02%)</title><rect x="345.7" y="581" width="0.2" height="15.0" fill="rgb(53,168,168)" rx="2" ry="2" />
+<text  x="348.66" y="591.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (870,927,835 us, 9.10%)</title><rect x="10.0" y="997" width="107.3" height="15.0" fill="rgb(125,125,242)" rx="2" ry="2" />
+<text  x="13.00" y="1007.5" >do_syscall_64</text>
+</g>
+<g >
+<title>[unknown] (15,033,571 us, 0.16%)</title><rect x="344.1" y="981" width="1.8" height="15.0" fill="rgb(135,135,250)" rx="2" ry="2" />
+<text  x="347.08" y="991.5" ></text>
+</g>
+<g >
+<title>-- (1,850,864 us, 0.02%)</title><rect x="1188.7" y="661" width="0.3" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="1191.72" y="671.5" ></text>
+</g>
+<g >
+<title>smp_apic_timer_interrupt (869,791,475 us, 9.08%)</title><rect x="10.1" y="837" width="107.2" height="15.0" fill="rgb(105,215,215)" rx="2" ry="2" />
+<text  x="13.14" y="847.5" >smp_apic_time..</text>
+</g>
+<g >
+<title>wake_up_page_bit (1,900,842 us, 0.02%)</title><rect x="982.2" y="581" width="0.3" height="15.0" fill="rgb(83,196,196)" rx="2" ry="2" />
+<text  x="985.23" y="591.5" ></text>
+</g>
+<g >
+<title>wake_up_page_bit (1,380,274 us, 0.01%)</title><rect x="1116.1" y="581" width="0.1" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="1119.08" y="591.5" ></text>
+</g>
+<g >
+<title> (1,011,139,337 us, 10.56%)</title><rect x="656.4" y="1013" width="124.7" height="15.0" fill="rgb(137,137,253)" rx="2" ry="2" />
+<text  x="659.44" y="1023.5" ></text>
+</g>
+<g >
+<title>autoremove_wake_function (2,198,241 us, 0.02%)</title><rect x="345.7" y="629" width="0.2" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="348.66" y="639.5" ></text>
+</g>
+<g >
+<title>do_futex (1,011,138,657 us, 10.56%)</title><rect x="656.4" y="853" width="124.7" height="15.0" fill="rgb(67,181,181)" rx="2" ry="2" />
+<text  x="659.44" y="863.5" >do_futex</text>
+</g>
+<g >
+<title>sys_futex (1,098,714,722 us, 11.48%)</title><rect x="419.3" y="965" width="135.4" height="15.0" fill="rgb(126,126,244)" rx="2" ry="2" />
+<text  x="422.28" y="975.5" >sys_futex</text>
+</g>
+<g >
+<title>[unknown] (9,364,548 us, 0.10%)</title><rect x="554.8" y="885" width="1.1" height="15.0" fill="rgb(103,103,224)" rx="2" ry="2" />
+<text  x="557.75" y="895.5" ></text>
+</g>
+<g >
+<title>rocksdb:low0 (87,307,337 us, 0.91%)</title><rect x="782.3" y="773" width="10.7" height="15.0" fill="rgb(76,189,189)" rx="2" ry="2" />
+<text  x="785.29" y="783.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (10,487,458 us, 0.11%)</title><rect x="417.9" y="837" width="1.3" height="15.0" fill="rgb(99,99,221)" rx="2" ry="2" />
+<text  x="420.93" y="847.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (1,379,978 us, 0.01%)</title><rect x="1116.1" y="197" width="0.1" height="15.0" fill="rgb(84,196,196)" rx="2" ry="2" />
+<text  x="1119.08" y="207.5" ></text>
+</g>
+<g >
+<title>ext4_mb_load_buddy_gfp (1,064,943 us, 0.01%)</title><rect x="10.0" y="853" width="0.1" height="15.0" fill="rgb(129,129,245)" rx="2" ry="2" />
+<text  x="13.00" y="863.5" ></text>
+</g>
+<g >
+<title>-- (954,444,856 us, 9.97%)</title><rect x="782.3" y="885" width="117.6" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="785.29" y="895.5" >--</text>
+</g>
+<g >
+<title>handle_irq (1,037,769 us, 0.01%)</title><rect x="10.0" y="325" width="0.1" height="15.0" fill="rgb(94,206,206)" rx="2" ry="2" />
+<text  x="13.00" y="335.5" ></text>
+</g>
+<g >
+<title>do_writepages (1,595,992 us, 0.02%)</title><rect x="344.7" y="693" width="0.2" height="15.0" fill="rgb(112,112,231)" rx="2" ry="2" />
+<text  x="347.68" y="703.5" ></text>
+</g>
+<g >
+<title>[unknown] (9,515,215 us, 0.10%)</title><rect x="781.1" y="885" width="1.2" height="15.0" fill="rgb(92,92,215)" rx="2" ry="2" />
+<text  x="784.11" y="895.5" ></text>
+</g>
+<g >
+<title>[unknown] (15,033,577 us, 0.16%)</title><rect x="344.1" y="997" width="1.8" height="15.0" fill="rgb(130,130,246)" rx="2" ry="2" />
+<text  x="347.08" y="1007.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,839,468,091 us, 19.21%)</title><rect x="117.4" y="805" width="226.7" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="120.37" y="815.5" >entry_SYSCALL_64_after_hwframe</text>
+</g>
+<g >
+<title>rocksdb:low6 (129,972,123 us, 1.36%)</title><rect x="863.9" y="773" width="16.0" height="15.0" fill="rgb(91,203,203)" rx="2" ry="2" />
+<text  x="866.91" y="783.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,074,850,269 us, 11.23%)</title><rect x="983.5" y="981" width="132.5" height="15.0" fill="rgb(90,90,213)" rx="2" ry="2" />
+<text  x="986.53" y="991.5" >do_syscall_64</text>
+</g>
+<g >
+<title>[unknown] (11,375,301 us, 0.12%)</title><rect x="417.9" y="933" width="1.4" height="15.0" fill="rgb(139,139,254)" rx="2" ry="2" />
+<text  x="420.87" y="943.5" ></text>
+</g>
+<g >
+<title>bit_wait_io (1,064,943 us, 0.01%)</title><rect x="10.0" y="757" width="0.1" height="15.0" fill="rgb(107,107,227)" rx="2" ry="2" />
+<text  x="13.00" y="767.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (2,424,459 us, 0.03%)</title><rect x="344.1" y="789" width="0.3" height="15.0" fill="rgb(134,134,250)" rx="2" ry="2" />
+<text  x="347.08" y="799.5" ></text>
+</g>
+<g >
+<title>__filemap_fdatawrite_range (1,595,992 us, 0.02%)</title><rect x="344.7" y="709" width="0.2" height="15.0" fill="rgb(109,109,229)" rx="2" ry="2" />
+<text  x="347.68" y="719.5" ></text>
+</g>
+<g >
+<title>do_fsync (10,487,439 us, 0.11%)</title><rect x="417.9" y="789" width="1.3" height="15.0" fill="rgb(119,119,238)" rx="2" ry="2" />
+<text  x="420.93" y="799.5" ></text>
+</g>
+<g >
+<title>kthread (7,176,391 us, 0.07%)</title><rect x="655.5" y="581" width="0.9" height="15.0" fill="rgb(90,202,202)" rx="2" ry="2" />
+<text  x="658.50" y="591.5" ></text>
+</g>
+<g >
+<title>ret_from_fork (2,198,241 us, 0.02%)</title><rect x="345.7" y="517" width="0.2" height="15.0" fill="rgb(87,199,199)" rx="2" ry="2" />
+<text  x="348.66" y="527.5" ></text>
+</g>
+<g >
+<title>__blk_mq_complete_request (1,380,274 us, 0.01%)</title><rect x="1116.1" y="437" width="0.1" height="15.0" fill="rgb(83,195,195)" rx="2" ry="2" />
+<text  x="1119.08" y="447.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,011,138,768 us, 10.56%)</title><rect x="656.4" y="997" width="124.7" height="15.0" fill="rgb(82,82,207)" rx="2" ry="2" />
+<text  x="659.44" y="1007.5" >entry_SYSCALL_6..</text>
+</g>
+<g >
+<title>[unknown] (11,093,608 us, 0.12%)</title><rect x="1116.1" y="917" width="1.3" height="15.0" fill="rgb(137,137,252)" rx="2" ry="2" />
+<text  x="1119.08" y="927.5" ></text>
+</g>
+<g >
+<title>futex_wait (803,483,865 us, 8.39%)</title><rect x="555.9" y="933" width="99.0" height="15.0" fill="rgb(100,100,222)" rx="2" ry="2" />
+<text  x="558.91" y="943.5" >futex_wait</text>
+</g>
+<g >
+<title>file_write_and_wait_range (4,110,070 us, 0.04%)</title><rect x="417.9" y="741" width="0.5" height="15.0" fill="rgb(119,119,237)" rx="2" ry="2" />
+<text  x="420.93" y="751.5" ></text>
+</g>
+<g >
+<title>rocksdb:low5 (108,219,043 us, 1.13%)</title><rect x="508.6" y="773" width="13.4" height="15.0" fill="rgb(89,200,200)" rx="2" ry="2" />
+<text  x="511.65" y="783.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (10,548,983 us, 0.11%)</title><rect x="1116.1" y="821" width="1.3" height="15.0" fill="rgb(124,124,242)" rx="2" ry="2" />
+<text  x="1119.08" y="831.5" ></text>
+</g>
+<g >
+<title>jbd2/nvme0n1p1- (2,424,459 us, 0.03%)</title><rect x="344.1" y="533" width="0.3" height="15.0" fill="rgb(54,169,169)" rx="2" ry="2" />
+<text  x="347.08" y="543.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter (4,029,424 us, 0.04%)</title><rect x="417.9" y="245" width="0.5" height="15.0" fill="rgb(93,205,205)" rx="2" ry="2" />
+<text  x="420.93" y="255.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,839,468,091 us, 19.21%)</title><rect x="117.4" y="821" width="226.7" height="15.0" fill="rgb(101,212,212)" rx="2" ry="2" />
+<text  x="120.37" y="831.5" >do_syscall_64</text>
+</g>
+<g >
+<title>ext4_end_bitmap_read (1,037,769 us, 0.01%)</title><rect x="10.0" y="565" width="0.1" height="15.0" fill="rgb(66,180,180)" rx="2" ry="2" />
+<text  x="13.00" y="575.5" ></text>
+</g>
+</g>
+</svg>

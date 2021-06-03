@@ -1,0 +1,776 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="614" onload="init(evt)" viewBox="0 0 1200 614" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#e0e0ff" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+	}
+
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom();
+			zoom(target);
+		}
+		else if (e.target.id == "unzoom") unzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+	}, false)
+
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+		return;
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x = txt.length - 2; x > 0; x--) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom() {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+		search();
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) {
+				currentSearchTerm = term;
+				search();
+			}
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (currentSearchTerm === null) return;
+		var term = currentSearchTerm;
+
+		var re = new RegExp(term, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="614.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >Off-CPU Time Flame Graph 1 thread(s) pm</text>
+<text id="details" x="10.00" y="597" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="597" > </text>
+<g id="frames">
+<g >
+<title>swapper/17 (45,842,379 us, 0.89%)</title><rect x="533.6" y="181" width="10.4" height="15.0" fill="rgb(102,213,213)" rx="2" ry="2" />
+<text  x="536.58" y="191.5" ></text>
+</g>
+<g >
+<title>swapper/10 (77,411,278 us, 1.50%)</title><rect x="10.0" y="181" width="17.7" height="15.0" fill="rgb(109,219,219)" rx="2" ry="2" />
+<text  x="13.00" y="191.5" ></text>
+</g>
+<g >
+<title> (1,440,075 us, 0.03%)</title><rect x="1189.6" y="53" width="0.4" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="1192.64" y="63.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,708,104 us, 0.03%)</title><rect x="1189.6" y="437" width="0.4" height="15.0" fill="rgb(101,101,222)" rx="2" ry="2" />
+<text  x="1192.61" y="447.5" ></text>
+</g>
+<g >
+<title>__hrtimer_run_queues (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="373" width="541.7" height="15.0" fill="rgb(57,172,172)" rx="2" ry="2" />
+<text  x="13.00" y="383.5" >__hrtimer_run_queues</text>
+</g>
+<g >
+<title>schedule (1,858,835,587 us, 35.92%)</title><rect x="551.7" y="405" width="423.9" height="15.0" fill="rgb(95,95,217)" rx="2" ry="2" />
+<text  x="554.73" y="415.5" >schedule</text>
+</g>
+<g >
+<title>swapper/13 (25,254,985 us, 0.49%)</title><rect x="50.3" y="181" width="5.8" height="15.0" fill="rgb(56,170,170)" rx="2" ry="2" />
+<text  x="53.34" y="191.5" ></text>
+</g>
+<g >
+<title> (1,443,962 us, 0.03%)</title><rect x="1189.6" y="357" width="0.4" height="15.0" fill="rgb(122,122,240)" rx="2" ry="2" />
+<text  x="1192.64" y="367.5" ></text>
+</g>
+<g >
+<title>jbd2_journal_commit_transaction (1,440,075 us, 0.03%)</title><rect x="1189.6" y="117" width="0.4" height="15.0" fill="rgb(71,184,184)" rx="2" ry="2" />
+<text  x="1192.64" y="127.5" ></text>
+</g>
+<g >
+<title>-- (937,985,597 us, 18.13%)</title><rect x="975.7" y="389" width="213.9" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="978.72" y="399.5" >--</text>
+</g>
+<g >
+<title>swapper/12 (15,469,838 us, 0.30%)</title><rect x="46.8" y="181" width="3.5" height="15.0" fill="rgb(53,168,168)" rx="2" ry="2" />
+<text  x="49.81" y="191.5" ></text>
+</g>
+<g >
+<title>cpu_startup_entry (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="245" width="541.7" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="13.00" y="255.5" >cpu_startup_entry</text>
+</g>
+<g >
+<title>do_syscall_64 (2,375,513,313 us, 45.91%)</title><rect x="10.0" y="501" width="541.7" height="15.0" fill="rgb(137,137,253)" rx="2" ry="2" />
+<text  x="13.00" y="511.5" >do_syscall_64</text>
+</g>
+<g >
+<title>kthread (1,440,075 us, 0.03%)</title><rect x="1189.6" y="85" width="0.4" height="15.0" fill="rgb(86,198,198)" rx="2" ry="2" />
+<text  x="1192.64" y="95.5" ></text>
+</g>
+<g >
+<title> (1,858,837,160 us, 35.92%)</title><rect x="551.7" y="517" width="423.9" height="15.0" fill="rgb(83,83,207)" rx="2" ry="2" />
+<text  x="554.73" y="527.5" ></text>
+</g>
+<g >
+<title> (938,014,001 us, 18.13%)</title><rect x="975.7" y="517" width="213.9" height="15.0" fill="rgb(130,130,247)" rx="2" ry="2" />
+<text  x="978.71" y="527.5" ></text>
+</g>
+<g >
+<title>vfs_fsync_range (1,442,857 us, 0.03%)</title><rect x="1189.6" y="277" width="0.4" height="15.0" fill="rgb(109,109,229)" rx="2" ry="2" />
+<text  x="1192.64" y="287.5" ></text>
+</g>
+<g >
+<title>rocksdb:high0 (1,859,268,165 us, 35.93%)</title><rect x="551.7" y="549" width="424.0" height="15.0" fill="rgb(128,128,245)" rx="2" ry="2" />
+<text  x="554.73" y="559.5" >rocksdb:high0</text>
+</g>
+<g >
+<title> (2,375,514,278 us, 45.91%)</title><rect x="10.0" y="533" width="541.7" height="15.0" fill="rgb(130,130,246)" rx="2" ry="2" />
+<text  x="13.00" y="543.5" ></text>
+</g>
+<g >
+<title>futex_wait (1,858,835,587 us, 35.92%)</title><rect x="551.7" y="437" width="423.9" height="15.0" fill="rgb(119,119,237)" rx="2" ry="2" />
+<text  x="554.73" y="447.5" >futex_wait</text>
+</g>
+<g >
+<title>do_futex (1,858,835,483 us, 35.92%)</title><rect x="551.7" y="357" width="423.9" height="15.0" fill="rgb(63,177,177)" rx="2" ry="2" />
+<text  x="554.73" y="367.5" >do_futex</text>
+</g>
+<g >
+<title>do_futex (937,985,597 us, 18.13%)</title><rect x="975.7" y="453" width="213.9" height="15.0" fill="rgb(119,119,238)" rx="2" ry="2" />
+<text  x="978.72" y="463.5" >do_futex</text>
+</g>
+<g >
+<title>[unknown] (1,708,767 us, 0.03%)</title><rect x="1189.6" y="501" width="0.4" height="15.0" fill="rgb(113,113,232)" rx="2" ry="2" />
+<text  x="1192.61" y="511.5" ></text>
+</g>
+<g >
+<title>call_cpuidle (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="277" width="541.7" height="15.0" fill="rgb(70,183,183)" rx="2" ry="2" />
+<text  x="13.00" y="287.5" >call_cpuidle</text>
+</g>
+<g >
+<title>jbd2_complete_transaction (1,440,076 us, 0.03%)</title><rect x="1189.6" y="245" width="0.4" height="15.0" fill="rgb(127,127,244)" rx="2" ry="2" />
+<text  x="1192.64" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,708,356 us, 0.03%)</title><rect x="1189.6" y="469" width="0.4" height="15.0" fill="rgb(81,81,206)" rx="2" ry="2" />
+<text  x="1192.61" y="479.5" ></text>
+</g>
+<g >
+<title>ret_from_fork (1,440,075 us, 0.03%)</title><rect x="1189.6" y="69" width="0.4" height="15.0" fill="rgb(99,209,209)" rx="2" ry="2" />
+<text  x="1192.64" y="79.5" ></text>
+</g>
+<g >
+<title>jbd2/pmem0-8 (1,440,075 us, 0.03%)</title><rect x="1189.6" y="37" width="0.4" height="15.0" fill="rgb(60,174,174)" rx="2" ry="2" />
+<text  x="1192.64" y="47.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,708,775 us, 0.03%)</title><rect x="1189.6" y="517" width="0.4" height="15.0" fill="rgb(117,117,236)" rx="2" ry="2" />
+<text  x="1192.61" y="527.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,592,522 us, 0.03%)</title><rect x="1189.6" y="373" width="0.4" height="15.0" fill="rgb(107,107,227)" rx="2" ry="2" />
+<text  x="1192.64" y="383.5" ></text>
+</g>
+<g >
+<title>swapper/9 (33,633,676 us, 0.65%)</title><rect x="544.0" y="181" width="7.7" height="15.0" fill="rgb(102,212,212)" rx="2" ry="2" />
+<text  x="547.03" y="191.5" ></text>
+</g>
+<g >
+<title>rocksdb:low0 (939,725,538 us, 18.16%)</title><rect x="975.7" y="549" width="214.3" height="15.0" fill="rgb(99,99,220)" rx="2" ry="2" />
+<text  x="978.71" y="559.5" >rocksdb:low0</text>
+</g>
+<g >
+<title>[unknown] (939,722,776 us, 18.16%)</title><rect x="975.7" y="533" width="214.3" height="15.0" fill="rgb(122,122,240)" rx="2" ry="2" />
+<text  x="978.71" y="543.5" >[unknown]</text>
+</g>
+<g >
+<title>do_idle (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="261" width="541.7" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="13.00" y="271.5" >do_idle</text>
+</g>
+<g >
+<title>do_futex (2,375,513,076 us, 45.91%)</title><rect x="10.0" y="469" width="541.7" height="15.0" fill="rgb(138,138,253)" rx="2" ry="2" />
+<text  x="13.00" y="479.5" >do_futex</text>
+</g>
+<g >
+<title>__wake_up_common (1,440,075 us, 0.03%)</title><rect x="1189.6" y="165" width="0.4" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="1192.64" y="175.5" ></text>
+</g>
+<g >
+<title> (1,858,835,483 us, 35.92%)</title><rect x="551.7" y="293" width="423.9" height="15.0" fill="rgb(95,206,206)" rx="2" ry="2" />
+<text  x="554.73" y="303.5" ></text>
+</g>
+<g >
+<title>-- (1,858,835,587 us, 35.92%)</title><rect x="551.7" y="389" width="423.9" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="554.73" y="399.5" >--</text>
+</g>
+<g >
+<title>[unknown] (1,708,435 us, 0.03%)</title><rect x="1189.6" y="485" width="0.4" height="15.0" fill="rgb(103,103,224)" rx="2" ry="2" />
+<text  x="1192.61" y="495.5" ></text>
+</g>
+<g >
+<title>__wake_up (1,440,075 us, 0.03%)</title><rect x="1189.6" y="133" width="0.4" height="15.0" fill="rgb(71,184,184)" rx="2" ry="2" />
+<text  x="1192.64" y="143.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,600,023 us, 0.03%)</title><rect x="1189.6" y="389" width="0.4" height="15.0" fill="rgb(88,88,211)" rx="2" ry="2" />
+<text  x="1192.64" y="399.5" ></text>
+</g>
+<g >
+<title>do_futex (937,985,579 us, 18.13%)</title><rect x="975.7" y="357" width="213.9" height="15.0" fill="rgb(60,174,174)" rx="2" ry="2" />
+<text  x="978.72" y="367.5" >do_futex</text>
+</g>
+<g >
+<title>sys_futex (1,858,835,587 us, 35.92%)</title><rect x="551.7" y="469" width="423.9" height="15.0" fill="rgb(126,126,243)" rx="2" ry="2" />
+<text  x="554.73" y="479.5" >sys_futex</text>
+</g>
+<g >
+<title>apic_timer_interrupt (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="325" width="541.7" height="15.0" fill="rgb(92,204,204)" rx="2" ry="2" />
+<text  x="13.00" y="335.5" >apic_timer_interrupt</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (937,987,326 us, 18.13%)</title><rect x="975.7" y="501" width="213.9" height="15.0" fill="rgb(92,92,215)" rx="2" ry="2" />
+<text  x="978.72" y="511.5" >entry_SYSCALL_64_after_hwframe</text>
+</g>
+<g >
+<title>futex_wake (1,858,835,483 us, 35.92%)</title><rect x="551.7" y="373" width="423.9" height="15.0" fill="rgb(56,171,171)" rx="2" ry="2" />
+<text  x="554.73" y="383.5" >futex_wake</text>
+</g>
+<g >
+<title>sys_futex (1,858,835,483 us, 35.92%)</title><rect x="551.7" y="341" width="423.9" height="15.0" fill="rgb(88,200,200)" rx="2" ry="2" />
+<text  x="554.73" y="351.5" >sys_futex</text>
+</g>
+<g >
+<title>futex_wait (937,985,597 us, 18.13%)</title><rect x="975.7" y="437" width="213.9" height="15.0" fill="rgb(84,84,208)" rx="2" ry="2" />
+<text  x="978.72" y="447.5" >futex_wait</text>
+</g>
+<g >
+<title>hrtimer_wakeup (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="389" width="541.7" height="15.0" fill="rgb(69,183,183)" rx="2" ry="2" />
+<text  x="13.00" y="399.5" >hrtimer_wakeup</text>
+</g>
+<g >
+<title> (937,985,579 us, 18.13%)</title><rect x="975.7" y="293" width="213.9" height="15.0" fill="rgb(103,213,213)" rx="2" ry="2" />
+<text  x="978.72" y="303.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,443,241 us, 0.03%)</title><rect x="1189.6" y="325" width="0.4" height="15.0" fill="rgb(95,95,218)" rx="2" ry="2" />
+<text  x="1192.64" y="335.5" ></text>
+</g>
+<g >
+<title>ext4_sync_file (1,442,857 us, 0.03%)</title><rect x="1189.6" y="261" width="0.4" height="15.0" fill="rgb(90,90,213)" rx="2" ry="2" />
+<text  x="1192.64" y="271.5" ></text>
+</g>
+<g >
+<title>swapper/16 (1,885,050,304 us, 36.43%)</title><rect x="103.7" y="181" width="429.9" height="15.0" fill="rgb(108,218,218)" rx="2" ry="2" />
+<text  x="106.72" y="191.5" >swapper/16</text>
+</g>
+<g >
+<title>do_syscall_64 (937,987,326 us, 18.13%)</title><rect x="975.7" y="485" width="213.9" height="15.0" fill="rgb(131,131,248)" rx="2" ry="2" />
+<text  x="978.72" y="495.5" >do_syscall_64</text>
+</g>
+<g >
+<title> (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="197" width="541.7" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="13.00" y="207.5" ></text>
+</g>
+<g >
+<title>sys_fdatasync (1,442,857 us, 0.03%)</title><rect x="1189.6" y="309" width="0.4" height="15.0" fill="rgb(123,123,241)" rx="2" ry="2" />
+<text  x="1192.64" y="319.5" ></text>
+</g>
+<g >
+<title>-- (2,375,513,076 us, 45.91%)</title><rect x="10.0" y="405" width="541.7" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="13.00" y="415.5" >--</text>
+</g>
+<g >
+<title>db_bench (2,375,648,800 us, 45.91%)</title><rect x="10.0" y="549" width="541.7" height="15.0" fill="rgb(111,111,230)" rx="2" ry="2" />
+<text  x="13.00" y="559.5" >db_bench</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,858,835,483 us, 35.92%)</title><rect x="551.7" y="309" width="423.9" height="15.0" fill="rgb(58,172,172)" rx="2" ry="2" />
+<text  x="554.73" y="319.5" >entry_SYSCALL_64_after_hwframe</text>
+</g>
+<g >
+<title>rocksdb:high0 (937,985,563 us, 18.13%)</title><rect x="975.7" y="277" width="213.9" height="15.0" fill="rgb(81,194,194)" rx="2" ry="2" />
+<text  x="978.72" y="287.5" >rocksdb:high0</text>
+</g>
+<g >
+<title>__wake_up_common_lock (1,440,075 us, 0.03%)</title><rect x="1189.6" y="149" width="0.4" height="15.0" fill="rgb(83,195,195)" rx="2" ry="2" />
+<text  x="1192.64" y="159.5" ></text>
+</g>
+<g >
+<title>do_syscall_64 (1,858,835,774 us, 35.92%)</title><rect x="551.7" y="485" width="423.9" height="15.0" fill="rgb(117,117,236)" rx="2" ry="2" />
+<text  x="554.73" y="495.5" >do_syscall_64</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (937,985,579 us, 18.13%)</title><rect x="975.7" y="309" width="213.9" height="15.0" fill="rgb(103,214,214)" rx="2" ry="2" />
+<text  x="978.72" y="319.5" >entry_SYSCALL_64_after_hwframe</text>
+</g>
+<g >
+<title>do_syscall_64 (1,858,835,483 us, 35.92%)</title><rect x="551.7" y="325" width="423.9" height="15.0" fill="rgb(102,213,213)" rx="2" ry="2" />
+<text  x="554.73" y="335.5" >do_syscall_64</text>
+</g>
+<g >
+<title>schedule (1,440,075 us, 0.03%)</title><rect x="1189.6" y="213" width="0.4" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="1192.64" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,610,146 us, 0.03%)</title><rect x="1189.6" y="421" width="0.4" height="15.0" fill="rgb(105,105,226)" rx="2" ry="2" />
+<text  x="1192.63" y="431.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,859,266,066 us, 35.93%)</title><rect x="551.7" y="533" width="424.0" height="15.0" fill="rgb(85,85,209)" rx="2" ry="2" />
+<text  x="554.73" y="543.5" >[unknown]</text>
+</g>
+<g >
+<title>swapper/15 (88,811,753 us, 1.72%)</title><rect x="83.5" y="181" width="20.2" height="15.0" fill="rgb(52,167,167)" rx="2" ry="2" />
+<text  x="86.47" y="191.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,608,244 us, 0.03%)</title><rect x="1189.6" y="405" width="0.4" height="15.0" fill="rgb(89,89,213)" rx="2" ry="2" />
+<text  x="1192.63" y="415.5" ></text>
+</g>
+<g >
+<title>schedule (937,985,597 us, 18.13%)</title><rect x="975.7" y="405" width="213.9" height="15.0" fill="rgb(101,101,223)" rx="2" ry="2" />
+<text  x="978.72" y="415.5" >schedule</text>
+</g>
+<g >
+<title>futex_wait_queue_me (2,375,513,076 us, 45.91%)</title><rect x="10.0" y="437" width="541.7" height="15.0" fill="rgb(122,122,240)" rx="2" ry="2" />
+<text  x="13.00" y="447.5" >futex_wait_queue_me</text>
+</g>
+<g >
+<title>do_syscall_64 (937,985,579 us, 18.13%)</title><rect x="975.7" y="325" width="213.9" height="15.0" fill="rgb(63,177,177)" rx="2" ry="2" />
+<text  x="978.72" y="335.5" >do_syscall_64</text>
+</g>
+<g >
+<title>-- (1,440,075 us, 0.03%)</title><rect x="1189.6" y="197" width="0.4" height="15.0" fill="rgb(160,160,160)" rx="2" ry="2" />
+<text  x="1192.64" y="207.5" ></text>
+</g>
+<g >
+<title>jbd2_log_wait_commit (1,440,076 us, 0.03%)</title><rect x="1189.6" y="229" width="0.4" height="15.0" fill="rgb(131,131,248)" rx="2" ry="2" />
+<text  x="1192.64" y="239.5" ></text>
+</g>
+<g >
+<title>futex_wait (2,375,513,076 us, 45.91%)</title><rect x="10.0" y="453" width="541.7" height="15.0" fill="rgb(118,118,237)" rx="2" ry="2" />
+<text  x="13.00" y="463.5" >futex_wait</text>
+</g>
+<g >
+<title>db_bench (1,858,835,348 us, 35.92%)</title><rect x="551.7" y="277" width="423.9" height="15.0" fill="rgb(59,173,173)" rx="2" ry="2" />
+<text  x="554.73" y="287.5" >db_bench</text>
+</g>
+<g >
+<title>futex_wait_queue_me (1,858,835,587 us, 35.92%)</title><rect x="551.7" y="421" width="423.9" height="15.0" fill="rgb(106,106,226)" rx="2" ry="2" />
+<text  x="554.73" y="431.5" >futex_wait_queue_me</text>
+</g>
+<g >
+<title>smp_apic_timer_interrupt (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="341" width="541.7" height="15.0" fill="rgb(108,218,218)" rx="2" ry="2" />
+<text  x="13.00" y="351.5" >smp_apic_timer_interrupt</text>
+</g>
+<g >
+<title>sys_futex (937,985,579 us, 18.13%)</title><rect x="975.7" y="341" width="213.9" height="15.0" fill="rgb(75,188,188)" rx="2" ry="2" />
+<text  x="978.72" y="351.5" >sys_futex</text>
+</g>
+<g >
+<title>swapper/11 (84,023,947 us, 1.62%)</title><rect x="27.7" y="181" width="19.1" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="30.65" y="191.5" ></text>
+</g>
+<g >
+<title>schedule (2,375,513,076 us, 45.91%)</title><rect x="10.0" y="421" width="541.7" height="15.0" fill="rgb(94,94,216)" rx="2" ry="2" />
+<text  x="13.00" y="431.5" >schedule</text>
+</g>
+<g >
+<title>start_secondary (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="229" width="541.7" height="15.0" fill="rgb(62,176,176)" rx="2" ry="2" />
+<text  x="13.00" y="239.5" >start_secondary</text>
+</g>
+<g >
+<title>kjournald2 (1,440,075 us, 0.03%)</title><rect x="1189.6" y="101" width="0.4" height="15.0" fill="rgb(94,205,205)" rx="2" ry="2" />
+<text  x="1192.64" y="111.5" ></text>
+</g>
+<g >
+<title>do_fsync (1,442,857 us, 0.03%)</title><rect x="1189.6" y="293" width="0.4" height="15.0" fill="rgb(136,136,252)" rx="2" ry="2" />
+<text  x="1192.64" y="303.5" ></text>
+</g>
+<g >
+<title>swapper/14 (120,014,896 us, 2.32%)</title><rect x="56.1" y="181" width="27.4" height="15.0" fill="rgb(66,180,180)" rx="2" ry="2" />
+<text  x="59.10" y="191.5" >s..</text>
+</g>
+<g >
+<title>[unknown] (1,708,239 us, 0.03%)</title><rect x="1189.6" y="453" width="0.4" height="15.0" fill="rgb(98,98,220)" rx="2" ry="2" />
+<text  x="1192.61" y="463.5" ></text>
+</g>
+<g >
+<title>do_futex (1,858,835,587 us, 35.92%)</title><rect x="551.7" y="453" width="423.9" height="15.0" fill="rgb(88,88,211)" rx="2" ry="2" />
+<text  x="554.73" y="463.5" >do_futex</text>
+</g>
+<g >
+<title>secondary_startup_64 (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="213" width="541.7" height="15.0" fill="rgb(69,182,182)" rx="2" ry="2" />
+<text  x="13.00" y="223.5" >secondary_startup_64</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,858,835,774 us, 35.92%)</title><rect x="551.7" y="501" width="423.9" height="15.0" fill="rgb(100,100,222)" rx="2" ry="2" />
+<text  x="554.73" y="511.5" >entry_SYSCALL_64_after_hwframe</text>
+</g>
+<g >
+<title>sys_futex (2,375,513,076 us, 45.91%)</title><rect x="10.0" y="485" width="541.7" height="15.0" fill="rgb(133,133,249)" rx="2" ry="2" />
+<text  x="13.00" y="495.5" >sys_futex</text>
+</g>
+<g >
+<title>all (5,174,642,503 us, 100%)</title><rect x="10.0" y="565" width="1180.0" height="15.0" fill="rgb(104,104,225)" rx="2" ry="2" />
+<text  x="13.00" y="575.5" ></text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (2,375,513,313 us, 45.91%)</title><rect x="10.0" y="517" width="541.7" height="15.0" fill="rgb(130,130,246)" rx="2" ry="2" />
+<text  x="13.00" y="527.5" >entry_SYSCALL_64_after_hwframe</text>
+</g>
+<g >
+<title>sys_futex (937,985,597 us, 18.13%)</title><rect x="975.7" y="469" width="213.9" height="15.0" fill="rgb(112,112,231)" rx="2" ry="2" />
+<text  x="978.72" y="479.5" >sys_futex</text>
+</g>
+<g >
+<title>futex_wait_queue_me (937,985,597 us, 18.13%)</title><rect x="975.7" y="421" width="213.9" height="15.0" fill="rgb(108,108,229)" rx="2" ry="2" />
+<text  x="978.72" y="431.5" >futex_wait_queue_me</text>
+</g>
+<g >
+<title>cpuidle_enter (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="293" width="541.7" height="15.0" fill="rgb(59,173,173)" rx="2" ry="2" />
+<text  x="13.00" y="303.5" >cpuidle_enter</text>
+</g>
+<g >
+<title>futex_wake (937,985,579 us, 18.13%)</title><rect x="975.7" y="373" width="213.9" height="15.0" fill="rgb(50,165,165)" rx="2" ry="2" />
+<text  x="978.72" y="383.5" >futex_wake</text>
+</g>
+<g >
+<title>autoremove_wake_function (1,440,075 us, 0.03%)</title><rect x="1189.6" y="181" width="0.4" height="15.0" fill="rgb(99,210,210)" rx="2" ry="2" />
+<text  x="1192.64" y="191.5" ></text>
+</g>
+<g >
+<title>cpuidle_enter_state (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="309" width="541.7" height="15.0" fill="rgb(96,207,207)" rx="2" ry="2" />
+<text  x="13.00" y="319.5" >cpuidle_enter_state</text>
+</g>
+<g >
+<title>entry_SYSCALL_64_after_hwframe (1,443,241 us, 0.03%)</title><rect x="1189.6" y="341" width="0.4" height="15.0" fill="rgb(138,138,253)" rx="2" ry="2" />
+<text  x="1192.64" y="351.5" ></text>
+</g>
+<g >
+<title>hrtimer_interrupt (2,375,513,056 us, 45.91%)</title><rect x="10.0" y="357" width="541.7" height="15.0" fill="rgb(85,197,197)" rx="2" ry="2" />
+<text  x="13.00" y="367.5" >hrtimer_interrupt</text>
+</g>
+</g>
+</svg>
