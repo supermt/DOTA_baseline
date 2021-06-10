@@ -36,7 +36,8 @@ if __name__ == '__main__':
             "perf_level":5,
             "stats_level":5,
             "statistics":"true",
-            "duration":"2000"
+            "duration":"2000",
+            "report_thread_idle":true
         })
     runner.run()
     reset_CPUs()
