@@ -1,0 +1,2293 @@
+Initializing RocksDB Options from the specified file
+Initializing RocksDB Options from command-line flags
+/home/supermt/rocksdb_ssd
+Keys:       8 bytes each
+Values:     100 bytes each (50 bytes after compression)
+Entries:    483183820
+Prefix:    0 bytes
+Keys per prefix:    0
+RawSize:    49766.4 MB (estimated)
+FileSize:   26726.4 MB (estimated)
+Write rate: 0 bytes/second
+Read rate: 0 ops/second
+Compression: NoCompression
+Compression sampling rate: 0
+Memtablerep: skip_list
+Perf Level: 5
+------------------------------------------------
+0 point(s) detected
+no tuner
+Initializing RocksDB Options from the specified file
+Initializing RocksDB Options from command-line flags
+/home/supermt/rocksdb_ssd
+DB path: [/home/supermt/rocksdb_ssd]
+fillrandom   :       4.842 micros/op 206518 ops/sec;   21.3 MB/s
+Thread States for Pool Priority: Bottom
+timestamp (micros) of each thread creating
+micro seconds waiting for next mission
+
+Thread States for Pool Priority: Low
+timestamp (micros) of each thread creating
+rocksdb:low0 : 1623424268152885
+micro seconds waiting for next mission
+0 : 7881487
+0 : 5907846
+0 : 1
+0 : 0
+0 : 0
+0 : 4785000
+0 : 0
+0 : 0
+0 : 1
+0 : 4541901
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 2539466
+0 : 0
+0 : 0
+0 : 0
+0 : 2201820
+0 : 0
+0 : 0
+0 : 0
+0 : 2111412
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 260963
+0 : 0
+0 : 0
+0 : 0
+0 : 277380
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 1
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 0
+0 : 1
+0 : 0
+0 : 0
+0 : 0
+
+Thread States for Pool Priority: L0
+timestamp (micros) of each thread creating
+micro seconds waiting for next mission
+
+Thread States for Pool Priority: Deep Compaction
+timestamp (micros) of each thread creating
+micro seconds waiting for next mission
+
+Thread States for Pool Priority: L1 Compaction
+timestamp (micros) of each thread creating
+micro seconds waiting for next mission
+
+Thread States for Pool Priority: High
+timestamp (micros) of each thread creating
+rocksdb:high0 : 1623424268152943
+micro seconds waiting for next mission
+0 : 2173552
+0 : 1436896
+0 : 1437820
+0 : 1437752
+0 : 1522582
+0 : 1432698
+0 : 1423684
+0 : 1431397
+0 : 1531615
+0 : 1463050
+0 : 1511986
+0 : 1433171
+0 : 1544791
+0 : 1387685
+0 : 1448349
+0 : 1432392
+0 : 1534180
+0 : 1393161
+0 : 1476270
+0 : 1446881
+0 : 1549297
+0 : 1470339
+0 : 1480480
+0 : 1411739
+0 : 1538519
+0 : 1544044
+0 : 1525622
+0 : 1452036
+0 : 1576096
+0 : 1463026
+0 : 1407861
+0 : 1535733
+0 : 1609233
+0 : 1575335
+0 : 1577371
+0 : 1423610
+0 : 1535382
+0 : 1277524
+0 : 1447192
+0 : 1433894
+0 : 1326678
+0 : 1571206
+0 : 1521881
+0 : 1343729
+0 : 1630887
+0 : 1550166
+0 : 1508428
+0 : 1391774
+0 : 1430924
+0 : 1476484
+0 : 1443576
+0 : 1447676
+0 : 1456037
+0 : 1393303
+0 : 1640507
+0 : 1380578
+0 : 1524117
+0 : 1457796
+0 : 1418639
+0 : 1628601
+0 : 1443711
+0 : 1337283
+0 : 1445341
+0 : 1398009
+0 : 1428703
+0 : 1514886
+0 : 1485711
+0 : 1322448
+0 : 1404084
+0 : 1409468
+0 : 1488753
+0 : 1380891
+0 : 1359017
+0 : 1511703
+0 : 1613041
+0 : 1635137
+0 : 1585407
+0 : 1373487
+0 : 1451134
+0 : 1416027
+0 : 1413739
+0 : 1463118
+0 : 1398907
+0 : 1427349
+0 : 1551148
+0 : 1348843
+0 : 1400485
+0 : 1422585
+0 : 1305779
+0 : 1537406
+0 : 1546055
+0 : 1372293
+0 : 1357893
+0 : 1475697
+0 : 1554614
+0 : 1405425
+0 : 1350192
+0 : 1627997
+0 : 1524262
+0 : 1464563
+0 : 1372187
+0 : 1425984
+0 : 1382333
+0 : 1373241
+0 : 1567628
+0 : 1351312
+0 : 1393137
+0 : 1497989
+0 : 1428071
+0 : 1462270
+0 : 1418362
+0 : 1557777
+0 : 1355929
+0 : 1415982
+0 : 1629742
+0 : 1420011
+0 : 1481578
+0 : 1566394
+0 : 1377633
+0 : 1444591
+0 : 1403153
+0 : 1462643
+0 : 1440156
+0 : 1370076
+0 : 1435537
+0 : 1503544
+0 : 1380973
+0 : 1419876
+0 : 1471209
+0 : 1448171
+0 : 1605863
+0 : 1493386
+0 : 1464643
+0 : 1322569
+0 : 1494737
+0 : 1515613
+0 : 1463688
+0 : 1548399
+0 : 1542811
+0 : 1484375
+0 : 1394731
+0 : 1528101
+0 : 1621431
+0 : 1360142
+0 : 1502128
+0 : 1461051
+0 : 1599767
+0 : 1484181
+0 : 1463646
+0 : 1348974
+0 : 1361849
+0 : 1430112
+0 : 1479505
+0 : 1331745
+0 : 1531847
+0 : 1441057
+0 : 1464870
+0 : 1439046
+0 : 1568019
+0 : 1518438
+0 : 1448978
+0 : 1538344
+0 : 1393882
+0 : 1523998
+0 : 1437147
+0 : 1350664
+0 : 1510283
+0 : 1511889
+0 : 1552315
+0 : 1488092
+0 : 1387724
+0 : 1555146
+0 : 1591166
+0 : 1449644
+0 : 1459154
+0 : 1368004
+0 : 1365016
+0 : 1570210
+0 : 1452992
+0 : 1927879
+0 : 1398594
+0 : 1464327
+0 : 1441373
+0 : 1654701
+0 : 1631490
+0 : 1632667
+0 : 1580167
+0 : 3486901
+0 : 1421469
+0 : 1337148
+0 : 1348847
+0 : 1414133
+0 : 1502213
+0 : 1593125
+0 : 1493684
+0 : 1496124
+0 : 1493398
+0 : 1442530
+0 : 1512519
+0 : 1591441
+0 : 1383333
+0 : 1487534
+0 : 5425959
+0 : 1826780
+0 : 1355527
+0 : 1402809
+0 : 1365569
+0 : 1333775
+0 : 1495684
+0 : 1411496
+0 : 1402580
+0 : 1490907
+0 : 1455761
+0 : 1585642
+0 : 1365890
+0 : 1411907
+0 : 1418057
+0 : 1469518
+0 : 5479557
+0 : 1547416
+0 : 1433696
+0 : 1539953
+0 : 1438074
+0 : 1561833
+0 : 1438099
+0 : 1416189
+0 : 1389189
+0 : 1494618
+0 : 1431290
+0 : 1521374
+0 : 1404827
+0 : 1465709
+0 : 1398329
+0 : 1680874
+0 : 5745732
+0 : 3804971
+0 : 1365541
+0 : 1613911
+0 : 1486409
+0 : 1356074
+0 : 1426762
+0 : 1396720
+0 : 1617109
+0 : 1436069
+0 : 1524298
+0 : 1590033
+0 : 1589348
+0 : 1578171
+0 : 1465071
+0 : 1559712
+0 : 1389623
+0 : 6801133
+0 : 4233937
+0 : 1527444
+0 : 1516008
+0 : 1601634
+0 : 1574868
+0 : 1558670
+0 : 1358371
+0 : 1491240
+0 : 1486318
+0 : 1387499
+0 : 1341692
+0 : 1357383
+0 : 1591107
+0 : 1312795
+0 : 1454271
+0 : 1435209
+0 : 1566600
+0 : 6980396
+0 : 4732540
+0 : 1394175
+0 : 1436049
+0 : 1489346
+0 : 1454629
+0 : 1334179
+0 : 1548080
+0 : 1443405
+0 : 1443320
+0 : 1446779
+0 : 1368215
+0 : 1631801
+0 : 1599663
+0 : 1391178
+0 : 1439218
+0 : 1460252
+0 : 1444424
+0 : 7340032
+0 : 3529240
+0 : 1511253
+0 : 1608893
+0 : 1596304
+0 : 1553115
+0 : 1558651
+0 : 1364861
+0 : 1498864
+0 : 1498407
+0 : 1429755
+0 : 1428320
+0 : 1287796
+0 : 1451678
+0 : 1452803
+0 : 1556278
+0 : 1456713
+0 : 1533935
+0 : 8700856
+0 : 3471792
+0 : 1433242
+0 : 1464272
+0 : 1415750
+0 : 1372881
+0 : 1452046
+0 : 1532427
+0 : 1342681
+0 : 1416142
+0 : 1465603
+0 : 1572588
+0 : 1631914
+0 : 1536075
+0 : 1563550
+0 : 1449398
+0 : 1584105
+0 : 1478231
+0 : 8895026
+0 : 1568213
+0 : 1278843
+0 : 1465499
+0 : 1328018
+0 : 1583589
+0 : 1432534
+0 : 1499415
+0 : 1584814
+0 : 1400527
+0 : 1537693
+0 : 1453006
+0 : 1320620
+0 : 1616097
+0 : 1525371
+0 : 1588220
+0 : 1359371
+0 : 6276921
+0 : 3413264
+0 : 1506626
+0 : 1326218
+0 : 1394789
+0 : 1490250
+0 : 1366965
+0 : 1650705
+0 : 1430411
+0 : 1445464
+0 : 1476057
+0 : 1456688
+0 : 1361362
+0 : 1290438
+0 : 1473065
+0 : 1477692
+0 : 1370817
+0 : 7061309
+0 : 5749544
+0 : 1372824
+0 : 1356679
+0 : 1614201
+0 : 1672485
+0 : 1377787
+0 : 1393027
+0 : 1506756
+0 : 1632324
+0 : 1438521
+0 : 1391397
+0 : 1566468
+0 : 1402863
+0 : 1521784
+0 : 1589887
+0 : 1457762
+0 : 1377189
+0 : 6596440
+0 : 8505684
+0 : 1577070
+0 : 1409056
+0 : 1458187
+0 : 1345790
+0 : 1459463
+0 : 1327412
+0 : 1395522
+0 : 1517290
+0 : 1490435
+0 : 1509377
+0 : 1500485
+0 : 1593127
+0 : 1524609
+0 : 1589455
+0 : 1481909
+0 : 1724825
+0 : 1448820
+0 : 1365139
+0 : 7291804
+0 : 7742844
+0 : 1413708
+0 : 1581608
+0 : 1434775
+0 : 1467846
+0 : 1463290
+0 : 1443739
+0 : 1549393
+0 : 1451922
+0 : 1442972
+0 : 1353346
+0 : 1427646
+0 : 1473443
+0 : 1564484
+0 : 1493966
+0 : 1435491
+0 : 1537905
+0 : 1355405
+0 : 1484332
+0 : 8906391
+0 : 5893960
+0 : 1534141
+0 : 1538238
+0 : 1467001
+0 : 1596667
+0 : 1399209
+0 : 1437235
+0 : 1394813
+0 : 1517593
+0 : 1312092
+0 : 1386516
+0 : 1517110
+0 : 1436016
+0 : 1382964
+0 : 1508764
+0 : 1389743
+0 : 1611967
+0 : 1567409
+0 : 8163482
+0 : 7203000
+0 : 1485887
+0 : 1498287
+0 : 1501374
+0 : 1548439
+0 : 1435772
+0 : 1643447
+0 : 1435425
+0 : 1314816
+0 : 1582561
+0 : 1456259
+0 : 1487111
+0 : 1473464
+0 : 1522913
+0 : 1511268
+0 : 1363497
+0 : 1344099
+0 : 1342758
+0 : 1398915
+0 : 9062730
+0 : 2774656
+0 : 1507279
+0 : 1465231
+0 : 1531939
+0 : 1402939
+0 : 1416171
+0 : 1544289
+0 : 1356813
+0 : 1419075
+0 : 1418418
+0 : 1535151
+0 : 1456452
+0 : 1430772
+0 : 1315445
+0 : 1384051
+0 : 1482786
+0 : 1381736
+0 : 8854723
+0 : 1502082
+0 : 1437688
+0 : 1459697
+0 : 1450508
+0 : 1427798
+0 : 1419769
+0 : 1373932
+0 : 1330888
+0 : 1430328
+0 : 1552404
+0 : 1432392
+0 : 1522387
+0 : 1593368
+0 : 1558020
+0 : 1544681
+0 : 1423899
+0 : 1411349
+0 : 7058389
+0 : 6391184
+0 : 1386362
+0 : 1552172
+0 : 1338415
+0 : 1335121
+0 : 1334090
+0 : 1342278
+0 : 1264213
+0 : 1493613
+0 : 1327551
+0 : 1537470
+0 : 1371755
+0 : 1437604
+0 : 1551874
+0 : 1362114
+0 : 1440418
+0 : 1309199
+0 : 1316891
+0 : 6977909
+0 : 7957396
+0 : 1315420
+0 : 1498918
+0 : 1417278
+0 : 1351451
+0 : 1481590
+0 : 1353991
+0 : 1497352
+0 : 1480366
+0 : 1480386
+0 : 1484049
+0 : 1381174
+0 : 1325634
+0 : 1264220
+0 : 1235855
+0 : 1449395
+0 : 1568941
+0 : 1750271
+0 : 7813587
+0 : 4469414
+0 : 1548772
+0 : 1372320
+0 : 1441816
+0 : 1469631
+0 : 1461011
+0 : 1329135
+0 : 1521728
+0 : 1541915
+0 : 1369208
+0 : 1350720
+0 : 1186759
+0 : 1324011
+0 : 1272652
+0 : 1479341
+0 : 1531733
+0 : 1460654
+0 : 10177661
+0 : 3693553
+0 : 1373287
+0 : 1550872
+0 : 1382091
+0 : 1480841
+0 : 1436291
+0 : 1468103
+0 : 1608989
+0 : 1630593
+0 : 1375186
+0 : 1341962
+0 : 1476118
+0 : 1380405
+0 : 1394325
+0 : 1291822
+0 : 1310588
+0 : 1481224
+0 : 1409637
+0 : 9297957
+0 : 1515525
+0 : 1423320
+0 : 1321451
+0 : 1424092
+0 : 1346929
+0 : 1516404
+0 : 1364646
+0 : 1552093
+0 : 1542847
+0 : 1553948
+0 : 1479923
+0 : 1571956
+0 : 1490427
+0 : 1510519
+0 : 1504290
+0 : 1378588
+0 : 7690889
+0 : 4345253
+0 : 1531381
+0 : 1534159
+0 : 1483405
+0 : 1486502
+0 : 1278306
+0 : 1444344
+0 : 1510898
+0 : 1334341
+0 : 1528346
+0 : 1505417
+0 : 1441550
+0 : 1429498
+0 : 1417466
+0 : 1512503
+0 : 1558609
+0 : 1395673
+0 : 8758751
+0 : 4606019
+0 : 1550070
+0 : 1543277
+0 : 1502284
+0 : 1503703
+0 : 1550998
+0 : 1431058
+0 : 1799538
+0 : 1561688
+0 : 1386408
+0 : 1473074
+0 : 1540710
+0 : 1580100
+0 : 1480862
+0 : 1522021
+0 : 1462830
+0 : 1519470
+0 : 9213622
+0 : 2471921
+0 : 1373792
+0 : 1499771
+0 : 1279826
+0 : 1374821
+0 : 1566871
+0 : 1554451
+0 : 1524739
+0 : 1418772
+0 : 1432982
+0 : 1524643
+0 : 1495779
+0 : 1456981
+0 : 1441778
+0 : 1415174
+0 : 1616227
+0 : 1526537
+0 : 9739275
+0 : 4543653
+0 : 1385077
+0 : 1448223
+0 : 1401735
+0 : 1524065
+0 : 1362323
+0 : 1370561
+0 : 1365248
+0 : 1404479
+0 : 1444436
+0 : 1422125
+0 : 1370519
+0 : 1367960
+0 : 1344215
+0 : 1393842
+0 : 1538371
+0 : 1404853
+0 : 1461338
+0 : 11997510
+0 : 2835501
+0 : 1423655
+0 : 1632350
+0 : 1504910
+0 : 1606546
+0 : 1450891
+0 : 1343758
+0 : 1563304
+0 : 1489385
+0 : 1384986
+0 : 1327462
+0 : 1300288
+0 : 1488307
+0 : 1399853
+0 : 1499227
+0 : 1454107
+0 : 1277620
+0 : 1355188
+0 : 9753501
+0 : 1432740
+0 : 1531424
+0 : 1435924
+0 : 1496226
+0 : 1470656
+0 : 1427845
+0 : 1590652
+0 : 1318181
+0 : 1386000
+0 : 1504735
+0 : 1453639
+0 : 1404625
+0 : 1242149
+0 : 1326463
+0 : 1506051
+0 : 1477817
+0 : 9621950
+0 : 1618474
+0 : 1480207
+0 : 1568453
+0 : 1531959
+0 : 1480213
+0 : 1415971
+0 : 1481469
+0 : 1559645
+0 : 1541838
+0 : 1432551
+0 : 1353966
+0 : 1458571
+0 : 1466288
+0 : 1596453
+0 : 1443481
+0 : 1509162
+0 : 1534447
+0 : 6562890
+0 : 6559888
+0 : 1455942
+0 : 1467651
+0 : 1387343
+0 : 1289947
+0 : 1270730
+0 : 1338310
+0 : 1530985
+0 : 1485820
+0 : 1592199
+0 : 1479435
+0 : 1426229
+0 : 1540298
+0 : 1500801
+0 : 1475986
+0 : 1396705
+0 : 1478916
+0 : 1468470
+0 : 6423974
+0 : 9019541
+0 : 1528037
+0 : 1395042
+0 : 1469859
+0 : 1426710
+0 : 1581213
+0 : 1377855
+0 : 1379371
+0 : 1383408
+0 : 1434590
+0 : 1402361
+0 : 1360656
+0 : 1524079
+0 : 1576425
+0 : 1500279
+0 : 1297435
+0 : 1404538
+0 : 1403507
+0 : 1519064
+0 : 5283142
+0 : 10714462
+0 : 5879251
+0 : 1522565
+0 : 1527801
+0 : 1412442
+0 : 1379246
+0 : 1474153
+0 : 1400694
+0 : 1523338
+0 : 1339715
+0 : 1549064
+0 : 1553394
+0 : 1562578
+0 : 1464375
+0 : 1635941
+0 : 1446685
+0 : 1385343
+0 : 1478635
+0 : 1494009
+0 : 5818176
+0 : 6941787
+0 : 8904624
+0 : 1492721
+0 : 1535107
+0 : 1577956
+0 : 1551076
+0 : 1641867
+0 : 1421916
+0 : 1304614
+0 : 1356787
+0 : 1553586
+0 : 1419785
+0 : 1397198
+0 : 1529661
+0 : 1489766
+0 : 1398468
+0 : 1380881
+0 : 1330548
+0 : 1318473
+0 : 1562671
+0 : 6317656
+0 : 7011638
+0 : 10194957
+0 : 1557571
+0 : 1652739
+0 : 1415091
+0 : 1355617
+0 : 1518010
+0 : 1491579
+0 : 1394193
+0 : 1355230
+0 : 1593552
+0 : 1362347
+0 : 1411013
+0 : 1519697
+0 : 1402303
+0 : 1334481
+0 : 1578669
+0 : 1528681
+0 : 1484687
+0 : 1446066
+0 : 5384986
+0 : 7148090
+0 : 10580797
+0 : 3248631
+0 : 1506193
+0 : 1426496
+0 : 1626150
+0 : 1665622
+0 : 1412036
+0 : 1347547
+0 : 1316574
+0 : 1564766
+0 : 1506787
+0 : 1285201
+0 : 1578092
+0 : 1285320
+0 : 1518404
+0 : 1436506
+0 : 1427895
+0 : 1445772
+0 : 1499287
+0 : 6849570
+0 : 7240986
+0 : 8436449
+0 : 9397540
+0 : 1326314
+0 : 1343781
+0 : 1442235
+0 : 1537892
+0 : 1374469
+
+Thread States for Pool Priority: User
+timestamp (micros) of each thread creating
+micro seconds waiting for next mission
+
+
+
+** Compaction Stats [default] **
+Level    Files   Size     Score Read(GB)  Rn(GB) Rnp1(GB) Write(GB) Wnew(GB) Moved(GB) W-Amp Rd(MB/s) Wr(MB/s) Comp(sec) CompMergeCPU(sec) Comp(cnt) Avg(sec) KeyIn KeyDrop
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+  L0      6/0   325.58 MB   1.5      0.0     0.0      0.0      44.5     44.5       0.0   1.0      0.0    125.4    363.01            189.16       839    0.433       0      0
+  L1     35/1    2.07 GB   8.0     92.4    44.1     48.3      91.0     42.7       0.0   2.1    153.6    151.2    616.06            310.93        61   10.099    859M    10M
+  L2    228/5   13.46 GB   5.3    207.2    39.9    167.3     200.2     32.9       0.7   5.0    168.1    162.5   1261.65            561.89       663    1.903   1934M    64M
+  L3    338/0   19.56 GB   0.8      5.9     3.1      2.9       5.3      2.4      17.1   1.7    155.0    137.8     39.24             19.93        46    0.853     55M  6142K
+ Sum    607/6   35.40 GB   0.0    305.5    87.1    218.4     340.9    122.5      17.9   7.7    137.2    153.1   2279.95           1081.91      1609    1.417   2849M    81M
+ Int      0/0    0.00 KB   0.0     30.2     8.7     21.5      32.5     11.0       0.1   8.9    137.6    148.0    224.59            108.37       159    1.413    281M    12M
+
+** Compaction Stats [default] **
+Priority    Files   Size     Score Read(GB)  Rn(GB) Rnp1(GB) Write(GB) Wnew(GB) Moved(GB) W-Amp Rd(MB/s) Wr(MB/s) Comp(sec) CompMergeCPU(sec) Comp(cnt) Avg(sec) KeyIn KeyDrop
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Low      0/0    0.00 KB   0.0    305.5    87.1    218.4     296.5     78.0       0.0   0.0    163.2    158.4   1916.94            892.76       770    2.490   2849M    81M
+High      0/0    0.00 KB   0.0      0.0     0.0      0.0      44.5     44.5       0.0   0.0      0.0    125.4    363.01            189.16       839    0.433       0      0
+Uptime(secs): 2000.0 total, 200.0 interval
+Flush(GB): cumulative 44.459, interval 3.656
+AddFile(GB): cumulative 0.000, interval 0.000
+AddFile(Total Files): cumulative 0, interval 0
+AddFile(L0 Files): cumulative 0, interval 0
+AddFile(Keys): cumulative 0, interval 0
+Cumulative compaction: 340.92 GB write, 174.55 MB/s write, 305.52 GB read, 156.43 MB/s read, 2279.9 seconds
+Interval compaction: 32.46 GB write, 166.24 MB/s write, 30.19 GB read, 154.58 MB/s read, 224.6 seconds
+Stalls(count): 156 level0_slowdown, 88 level0_slowdown_with_compaction, 0 level0_numfiles, 0 level0_numfiles_with_compaction, 0 stop for pending_compaction_bytes, 0 slowdown for pending_compaction_bytes, 0 memtable_compaction, 0 memtable_slowdown, interval 50 total count
+
+** File Read Latency Histogram By Level [default] **
+** Level 0 read latency histogram (micros):
+Count: 11696970 Average: 1.5199  StdDev: 1.74
+Min: 0  Median: 0.8858  Max: 286
+Percentiles: P50: 0.89 P75: 1.48 P99: 2.96 P99.9: 6.76 P99.99: 88.51
+------------------------------------------------------
+[       0,       1 ]  6602313  56.445%  56.445% ###########
+(       1,       2 ]  4554702  38.939%  95.384% ########
+(       2,       3 ]   439006   3.753%  99.137% #
+(       3,       4 ]    43906   0.375%  99.512% 
+(       4,       6 ]    44774   0.383%  99.895% 
+(       6,      10 ]     3014   0.026%  99.921% 
+(      10,      15 ]     3637   0.031%  99.952% 
+(      15,      22 ]     3797   0.032%  99.984% 
+(      22,      34 ]       74   0.001%  99.985% 
+(      34,      51 ]      186   0.002%  99.987% 
+(      51,      76 ]      119   0.001%  99.988% 
+(      76,     110 ]      740   0.006%  99.994% 
+(     110,     170 ]      140   0.001%  99.995% 
+(     170,     250 ]      554   0.005% 100.000% 
+(     250,     380 ]        8   0.000% 100.000% 
+
+** Level 1 read latency histogram (micros):
+Count: 23061698 Average: 1.3623  StdDev: 2.31
+Min: 0  Median: 0.7187  Max: 851
+Percentiles: P50: 0.72 P75: 1.19 P99: 2.87 P99.9: 5.96 P99.99: 69.73
+------------------------------------------------------
+[       0,       1 ] 16044801  69.573%  69.573% ##############
+(       1,       2 ]  6567210  28.477%  98.050% ######
+(       2,       3 ]   252134   1.093%  99.143% 
+(       3,       4 ]   104359   0.453%  99.596% 
+(       4,       6 ]    71648   0.311%  99.907% 
+(       6,      10 ]     4744   0.021%  99.927% 
+(      10,      15 ]     7237   0.031%  99.959% 
+(      15,      22 ]     6279   0.027%  99.986% 
+(      22,      34 ]      163   0.001%  99.986% 
+(      34,      51 ]      282   0.001%  99.988% 
+(      51,      76 ]      714   0.003%  99.991% 
+(      76,     110 ]      691   0.003%  99.994% 
+(     110,     170 ]      519   0.002%  99.996% 
+(     170,     250 ]      537   0.002%  99.998% 
+(     250,     380 ]      113   0.000%  99.999% 
+(     380,     580 ]      251   0.001% 100.000% 
+(     580,     870 ]       16   0.000% 100.000% 
+
+** Level 2 read latency histogram (micros):
+Count: 44754028 Average: 1.3576  StdDev: 2.05
+Min: 0  Median: 0.7111  Max: 829
+Percentiles: P50: 0.71 P75: 1.17 P99: 3.02 P99.9: 6.27 P99.99: 95.05
+------------------------------------------------------
+[       0,       1 ] 31469322  70.316%  70.316% ##############
+(       1,       2 ] 12466106  27.855%  98.171% ######
+(       2,       3 ]   367012   0.820%  98.991% 
+(       3,       4 ]   247589   0.553%  99.544% 
+(       4,       6 ]   158616   0.354%  99.899% 
+(       6,      10 ]     9158   0.020%  99.919% 
+(      10,      15 ]    15814   0.035%  99.954% 
+(      15,      22 ]    13219   0.030%  99.984% 
+(      22,      34 ]      263   0.001%  99.985% 
+(      34,      51 ]      567   0.001%  99.986% 
+(      51,      76 ]      630   0.001%  99.987% 
+(      76,     110 ]     2243   0.005%  99.992% 
+(     110,     170 ]     1105   0.002%  99.995% 
+(     170,     250 ]     2103   0.005%  99.999% 
+(     250,     380 ]      278   0.001% 100.000% 
+(     580,     870 ]        3   0.000% 100.000% 
+
+** Level 3 read latency histogram (micros):
+Count: 13282 Average: 3.7832  StdDev: 18.44
+Min: 0  Median: 1.2672  Max: 317
+Percentiles: P50: 1.27 P75: 1.69 P99: 94.28 P99.9: 297.78 P99.99: 317.00
+------------------------------------------------------
+[       0,       1 ]     4561  34.340%  34.340% #######
+(       1,       2 ]     7783  58.598%  92.938% ############
+(       2,       3 ]      505   3.802%  96.740% #
+(       3,       4 ]      115   0.866%  97.606% 
+(       4,       6 ]       29   0.218%  97.824% 
+(       6,      10 ]       39   0.294%  98.118% 
+(      10,      15 ]       25   0.188%  98.306% 
+(      15,      22 ]       34   0.256%  98.562% 
+(      22,      34 ]        4   0.030%  98.592% 
+(      34,      51 ]        7   0.053%  98.645% 
+(      51,      76 ]       16   0.120%  98.765% 
+(      76,     110 ]       58   0.437%  99.202% 
+(     110,     170 ]       43   0.324%  99.526% 
+(     170,     250 ]       42   0.316%  99.842% 
+(     250,     380 ]       21   0.158% 100.000% 
+
+
+** DB Stats **
+Uptime(secs): 2000.0 total, 200.0 interval
+Cumulative writes: 413M writes, 413M keys, 413M commit groups, 1.0 writes per commit group, ingest: 47.31 GB, 24.22 MB/s
+Cumulative WAL: 413M writes, 0 syncs, 413036999.00 writes per sync, written: 47.31 GB, 24.22 MB/s
+Cumulative stall: 00:03:51.858 H:M:S, 11.6 percent
+Interval writes: 34M writes, 34M keys, 34M commit groups, 1.0 writes per commit group, ingest: 4004.58 MB, 20.03 MB/s
+Interval WAL: 34M writes, 0 syncs, 34139042.00 writes per sync, written: 3.91 MB, 20.03 MB/s
+Interval stall: 00:00:37.224 H:M:S, 18.6 percent
+
+STATISTICS:
+rocksdb.block.cache.miss COUNT : 79496323
+rocksdb.block.cache.hit COUNT : 0
+rocksdb.block.cache.add COUNT : 0
+rocksdb.block.cache.add.failures COUNT : 0
+rocksdb.block.cache.index.miss COUNT : 0
+rocksdb.block.cache.index.hit COUNT : 0
+rocksdb.block.cache.index.add COUNT : 0
+rocksdb.block.cache.index.bytes.insert COUNT : 0
+rocksdb.block.cache.index.bytes.evict COUNT : 0
+rocksdb.block.cache.filter.miss COUNT : 0
+rocksdb.block.cache.filter.hit COUNT : 0
+rocksdb.block.cache.filter.add COUNT : 0
+rocksdb.block.cache.filter.bytes.insert COUNT : 0
+rocksdb.block.cache.filter.bytes.evict COUNT : 0
+rocksdb.block.cache.data.miss COUNT : 79496323
+rocksdb.block.cache.data.hit COUNT : 0
+rocksdb.block.cache.data.add COUNT : 0
+rocksdb.block.cache.data.bytes.insert COUNT : 0
+rocksdb.block.cache.bytes.read COUNT : 0
+rocksdb.block.cache.bytes.write COUNT : 0
+rocksdb.bloom.filter.useful COUNT : 0
+rocksdb.bloom.filter.full.positive COUNT : 0
+rocksdb.bloom.filter.full.true.positive COUNT : 0
+rocksdb.bloom.filter.micros COUNT : 0
+rocksdb.persistent.cache.hit COUNT : 0
+rocksdb.persistent.cache.miss COUNT : 0
+rocksdb.sim.block.cache.hit COUNT : 0
+rocksdb.sim.block.cache.miss COUNT : 0
+rocksdb.memtable.hit COUNT : 0
+rocksdb.memtable.miss COUNT : 0
+rocksdb.l0.hit COUNT : 0
+rocksdb.l1.hit COUNT : 0
+rocksdb.l2andup.hit COUNT : 0
+rocksdb.compaction.key.drop.new COUNT : 81654017
+rocksdb.compaction.key.drop.obsolete COUNT : 0
+rocksdb.compaction.key.drop.range_del COUNT : 0
+rocksdb.compaction.key.drop.user COUNT : 0
+rocksdb.compaction.range_del.drop.obsolete COUNT : 0
+rocksdb.compaction.optimized.del.drop.obsolete COUNT : 0
+rocksdb.compaction.cancelled COUNT : 0
+rocksdb.number.keys.written COUNT : 413036999
+rocksdb.number.keys.read COUNT : 0
+rocksdb.number.keys.updated COUNT : 0
+rocksdb.bytes.written COUNT : 50803550877
+rocksdb.bytes.read COUNT : 0
+rocksdb.number.db.seek COUNT : 0
+rocksdb.number.db.next COUNT : 0
+rocksdb.number.db.prev COUNT : 0
+rocksdb.number.db.seek.found COUNT : 0
+rocksdb.number.db.next.found COUNT : 0
+rocksdb.number.db.prev.found COUNT : 0
+rocksdb.db.iter.bytes.read COUNT : 0
+rocksdb.no.file.closes COUNT : 0
+rocksdb.no.file.opens COUNT : 5931
+rocksdb.no.file.errors COUNT : 0
+rocksdb.l0.slowdown.micros COUNT : 0
+rocksdb.memtable.compaction.micros COUNT : 0
+rocksdb.l0.num.files.stall.micros COUNT : 0
+rocksdb.stall.micros COUNT : 231858492
+rocksdb.db.mutex.wait.micros COUNT : 14134943055
+rocksdb.rate.limit.delay.millis COUNT : 0
+rocksdb.num.iterators COUNT : 0
+rocksdb.number.multiget.get COUNT : 0
+rocksdb.number.multiget.keys.read COUNT : 0
+rocksdb.number.multiget.bytes.read COUNT : 0
+rocksdb.number.deletes.filtered COUNT : 0
+rocksdb.number.merge.failures COUNT : 0
+rocksdb.bloom.filter.prefix.checked COUNT : 0
+rocksdb.bloom.filter.prefix.useful COUNT : 0
+rocksdb.number.reseeks.iteration COUNT : 0
+rocksdb.getupdatessince.calls COUNT : 0
+rocksdb.block.cachecompressed.miss COUNT : 0
+rocksdb.block.cachecompressed.hit COUNT : 0
+rocksdb.block.cachecompressed.add COUNT : 0
+rocksdb.block.cachecompressed.add.failures COUNT : 0
+rocksdb.wal.synced COUNT : 0
+rocksdb.wal.bytes COUNT : 50803550877
+rocksdb.write.self COUNT : 413036999
+rocksdb.write.other COUNT : 0
+rocksdb.write.timeout COUNT : 0
+rocksdb.write.wal COUNT : 413036999
+rocksdb.compact.read.bytes COUNT : 327979779968
+rocksdb.compact.write.bytes COUNT : 318395210480
+rocksdb.flush.write.bytes COUNT : 47737140436
+rocksdb.number.direct.load.table.properties COUNT : 0
+rocksdb.number.superversion_acquires COUNT : 0
+rocksdb.number.superversion_releases COUNT : 0
+rocksdb.number.superversion_cleanups COUNT : 0
+rocksdb.number.block.compressed COUNT : 0
+rocksdb.number.block.decompressed COUNT : 0
+rocksdb.number.block.not_compressed COUNT : 0
+rocksdb.merge.operation.time.nanos COUNT : 0
+rocksdb.filter.operation.time.nanos COUNT : 0
+rocksdb.row.cache.hit COUNT : 0
+rocksdb.row.cache.miss COUNT : 0
+rocksdb.read.amp.estimate.useful.bytes COUNT : 0
+rocksdb.read.amp.total.read.bytes COUNT : 0
+rocksdb.number.rate_limiter.drains COUNT : 0
+rocksdb.number.iter.skip COUNT : 0
+rocksdb.blobdb.num.put COUNT : 0
+rocksdb.blobdb.num.write COUNT : 0
+rocksdb.blobdb.num.get COUNT : 0
+rocksdb.blobdb.num.multiget COUNT : 0
+rocksdb.blobdb.num.seek COUNT : 0
+rocksdb.blobdb.num.next COUNT : 0
+rocksdb.blobdb.num.prev COUNT : 0
+rocksdb.blobdb.num.keys.written COUNT : 0
+rocksdb.blobdb.num.keys.read COUNT : 0
+rocksdb.blobdb.bytes.written COUNT : 0
+rocksdb.blobdb.bytes.read COUNT : 0
+rocksdb.blobdb.write.inlined COUNT : 0
+rocksdb.blobdb.write.inlined.ttl COUNT : 0
+rocksdb.blobdb.write.blob COUNT : 0
+rocksdb.blobdb.write.blob.ttl COUNT : 0
+rocksdb.blobdb.blob.file.bytes.written COUNT : 0
+rocksdb.blobdb.blob.file.bytes.read COUNT : 0
+rocksdb.blobdb.blob.file.synced COUNT : 0
+rocksdb.blobdb.blob.index.expired.count COUNT : 0
+rocksdb.blobdb.blob.index.expired.size COUNT : 0
+rocksdb.blobdb.blob.index.evicted.count COUNT : 0
+rocksdb.blobdb.blob.index.evicted.size COUNT : 0
+rocksdb.blobdb.gc.num.files COUNT : 0
+rocksdb.blobdb.gc.num.new.files COUNT : 0
+rocksdb.blobdb.gc.failures COUNT : 0
+rocksdb.blobdb.gc.num.keys.overwritten COUNT : 0
+rocksdb.blobdb.gc.num.keys.expired COUNT : 0
+rocksdb.blobdb.gc.num.keys.relocated COUNT : 0
+rocksdb.blobdb.gc.bytes.overwritten COUNT : 0
+rocksdb.blobdb.gc.bytes.expired COUNT : 0
+rocksdb.blobdb.gc.bytes.relocated COUNT : 0
+rocksdb.blobdb.fifo.num.files.evicted COUNT : 0
+rocksdb.blobdb.fifo.num.keys.evicted COUNT : 0
+rocksdb.blobdb.fifo.bytes.evicted COUNT : 0
+rocksdb.txn.overhead.mutex.prepare COUNT : 0
+rocksdb.txn.overhead.mutex.old.commit.map COUNT : 0
+rocksdb.txn.overhead.duplicate.key COUNT : 0
+rocksdb.txn.overhead.mutex.snapshot COUNT : 0
+rocksdb.txn.get.tryagain COUNT : 0
+rocksdb.number.multiget.keys.found COUNT : 0
+rocksdb.num.iterator.created COUNT : 0
+rocksdb.num.iterator.deleted COUNT : 0
+rocksdb.block.cache.compression.dict.miss COUNT : 0
+rocksdb.block.cache.compression.dict.hit COUNT : 0
+rocksdb.block.cache.compression.dict.add COUNT : 0
+rocksdb.block.cache.compression.dict.bytes.insert COUNT : 0
+rocksdb.block.cache.compression.dict.bytes.evict COUNT : 0
+rocksdb.block.cache.add.redundant COUNT : 0
+rocksdb.block.cache.index.add.redundant COUNT : 0
+rocksdb.block.cache.filter.add.redundant COUNT : 0
+rocksdb.block.cache.data.add.redundant COUNT : 0
+rocksdb.block.cache.compression.dict.add.redundant COUNT : 0
+rocksdb.files.marked.trash COUNT : 0
+rocksdb.files.deleted.immediately COUNT : 6158
+rocksdb.db.get.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.db.write.micros P50 : 2.916298 P95 : 6.586627 P99 : 10.855902 P100 : 140320.000000 COUNT : 413036999 SUM : 1845720325
+rocksdb.compaction.times.micros P50 : 2067500.000000 P95 : 8810000.000000 P99 : 17541296.000000 P100 : 17541296.000000 COUNT : 770 SUM : 1916941078
+rocksdb.compaction.times.cpu_micros P50 : 882000.000000 P95 : 4125000.000000 P99 : 8923793.103448 P100 : 9736841.000000 COUNT : 770 SUM : 892755527
+rocksdb.subcompaction.setup.times.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.table.sync.micros P50 : 195361.702128 P95 : 359366.279070 P99 : 376276.356589 P100 : 417457.000000 COUNT : 839 SUM : 171041167
+rocksdb.compaction.outfile.sync.micros P50 : 149315.687540 P95 : 274255.591054 P99 : 358851.118211 P100 : 366722.000000 COUNT : 5092 SUM : 813010340
+rocksdb.wal.file.sync.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.manifest.file.sync.micros P50 : 6445.024631 P95 : 9761.464156 P99 : 120200.000000 P100 : 213858.000000 COUNT : 1911 SUM : 16141216
+rocksdb.table.open.io.micros P50 : 613.134080 P95 : 847.394219 P99 : 868.217343 P100 : 1510.000000 COUNT : 5931 SUM : 3235168
+rocksdb.db.multiget.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.read.block.compaction.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.read.block.get.micros P50 : 1.423583 P95 : 2.725778 P99 : 4.681453 P100 : 1034.000000 COUNT : 79508185 SUM : 158498086
+rocksdb.write.raw.block.micros P50 : 0.507380 P95 : 0.964021 P99 : 1.476788 P100 : 94324.000000 COUNT : 88718259 SUM : 197019151
+rocksdb.l0.slowdown.count P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.memtable.compaction.count P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.num.files.stall.count P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.hard.rate.limit.delay.count P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.soft.rate.limit.delay.count P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.numfiles.in.singlecompaction P50 : 1.000000 P95 : 3.677273 P99 : 19.858000 P100 : 22.000000 COUNT : 1071 SUM : 1851
+rocksdb.db.seek.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.db.write.stall P50 : 0.505138 P95 : 0.959761 P99 : 875.446736 P100 : 2152.000000 COUNT : 21139545 SUM : 233321616
+rocksdb.sst.read.micros P50 : 0.734705 P95 : 1.908157 P99 : 2.957742 P100 : 851.000000 COUNT : 79525978 SUM : 110003567
+rocksdb.num.subcompactions.scheduled P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.per.read P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.per.write P50 : 123.000000 P95 : 123.000000 P99 : 123.000000 P100 : 123.000000 COUNT : 413036999 SUM : 50803550877
+rocksdb.bytes.per.multiget P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.compressed P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.bytes.decompressed P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.compression.times.nanos P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.decompression.times.nanos P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.read.num.merge_operands P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.key.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.value.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.write.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.get.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.multiget.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.seek.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.next.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.prev.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.blob.file.write.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.blob.file.read.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.blob.file.sync.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.gc.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.compression.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.blobdb.decompression.micros P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+rocksdb.db.flush.micros P50 : 429935.897436 P95 : 561317.765568 P99 : 648445.000000 P100 : 648445.000000 COUNT : 839 SUM : 363005979
+rocksdb.sst.batch.size P50 : 0.000000 P95 : 0.000000 P99 : 0.000000 P100 : 0.000000 COUNT : 0 SUM : 0
+

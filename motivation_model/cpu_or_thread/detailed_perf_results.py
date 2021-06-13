@@ -32,12 +32,12 @@ if __name__ == '__main__':
 	    # "record_level_files": "true",
             # "change_points": "[{target_file_size_base,134217728,600},{write_buffer_size,134217728,600}]",
             #"DOTA_enabled":"true",
-            "--report_bg_io_stats":true,
+            "report_bg_io_stats":"true",
             "perf_level":5,
             "stats_level":5,
             "statistics":"true",
             "duration":"2000",
-            "report_thread_idle":true
+            "report_thread_idle":"true"
         })
     runner.run()
     reset_CPUs()
